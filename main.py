@@ -727,10 +727,12 @@ if mode == "PDB Upload & Structural Analysis":
         ax.set_title("Cα Distance Heatmap")
         st.pyplot(fig)
 
+with st.expander("📊 Model Performance & Dataset Analytics"):
 
 # ==========================================================
 # SECTION 16 — MODEL PERFORMANCE ANALYTICS
 # ==========================================================
+
 
 st.markdown("## 📊 Model Performance Metrics")
 
