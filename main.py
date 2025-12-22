@@ -496,11 +496,8 @@ if mode == "Single Peptide Prediction":
         "Enter peptide sequence (FASTA single-letter code)",
         help="Example: AGLWFK"
     )
-if st.button("Run Prediction"):
-    ...
-    st.session_state.show_analytics = True
 
-
+    if st.button("Run Prediction"):
 
         # --------------------------------------------------
         # Sequence cleaning & feature generation
@@ -522,19 +519,22 @@ if st.button("Run Prediction"):
             "Docking score (kcal/mol)": round(dock, 3)
         }
 
+        # 🔑 Enable analytics AFTER prediction
+        st.session_state.show_analytics = True
+
         # --------------------------------------------------
         # Display prediction summary
         # --------------------------------------------------
-        st.markdown("""
+        st.markdown(f"""
         <div class="card">
             <div class="metric">Taste Prediction</div>
-            <p>{}</p>
+            <p>{taste}</p>
             <div class="metric">Solubility Prediction</div>
-            <p>{}</p>
+            <p>{sol}</p>
             <div class="metric">Docking Score</div>
-            <p>{:.3f} kcal/mol</p>
+            <p>{dock:.3f} kcal/mol</p>
         </div>
-        """.format(taste, sol, dock), unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
 
         # --------------------------------------------------
         # Physicochemical properties
@@ -623,7 +623,6 @@ if st.button("Run Prediction"):
                 mime="application/pdf"
             )
 
-
 # ==========================================================
 # SECTION 14 — BATCH PEPTIDE PREDICTION MODE
 # ==========================================================
@@ -664,7 +663,9 @@ if mode == "Batch Peptide Prediction":
                 batch_df.to_csv(index=False),
                 file_name="batch_predictions.csv"
             )
-                st.session_state.show_analytics = True
+
+            # 🔑 Enable analytics after batch
+            st.session_state.show_analytics = True
 
 # ==========================================================
 # SECTION 15 — PDB UPLOAD & STRUCTURAL ANALYSIS MODE
@@ -680,10 +681,12 @@ if mode == "PDB Upload & Structural Analysis":
     )
 
     if uploaded_pdb is not None:
+
         pdb_text = uploaded_pdb.read().decode()
         st.session_state.pdb_text = pdb_text
-        st.session_state.show_analytics = True
 
+        # 🔑 Enable analytics after upload
+        st.session_state.show_analytics = True
 
         # --------------------------------------------------
         # 3D structure visualization
