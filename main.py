@@ -30,6 +30,13 @@ st.set_page_config(page_title="PepTastePredictor", layout="wide")
 
 DATASET_PATH = "AIML (4).xlsx"
 AA = "ACDEFGHIKLMNPQRSTVWY"
+# ==========================================================
+# SESSION STATE INITIALIZATION (SAFE)
+# ==========================================================
+
+if "pdb_text" not in st.session_state:
+    st.session_state.pdb_text = None
+
 
 # ==========================================================
 # FRONTEND STYLING (UI ONLY — SAFE)
@@ -307,19 +314,35 @@ st.markdown("## 🧩 Upload & Analyze PDB")
 
 uploaded = st.file_uploader("Upload PDB file", type=["pdb"])
 if uploaded:
-    pdb_text = uploaded.read().decode()
+    st.session_state.pdb_text = open(build_peptide_pdb(seq)).read()
     st.components.v1.html(show_structure(pdb_text)._make_html(), height=520)
+    st.components.v1.html(
+    show_structure(st.session_state.pdb_text)._make_html(),
+    height=520
+)
 
-    phi_psi = ramachandran_from_pdb(pdb_text)
-    if phi_psi:
+
+  if st.session_state.pdb_text is not None:
+
+    st.markdown("### Ramachandran Plot")
+
+    phi_psi = ramachandran_from_pdb(st.session_state.pdb_text)
+
+    if len(phi_psi) == 0:
+        st.warning("Ramachandran plot not available (peptide too short or incomplete backbone).")
+    else:
         phi, psi = zip(*phi_psi)
         fig, ax = plt.subplots()
         ax.scatter(phi, psi, s=20)
-        ax.set_xlim(-180,180)
-        ax.set_ylim(-180,180)
+        ax.set_xlim(-180, 180)
+        ax.set_ylim(-180, 180)
+        ax.set_xlabel("Phi (°)")
+        ax.set_ylabel("Psi (°)")
         st.pyplot(fig)
 
-    dist = ca_distance_map(pdb_text)
+    st.markdown("### Cα Distance Map")
+
+    dist = ca_distance_map(st.session_state.pdb_text)
     fig, ax = plt.subplots(figsize=(5,5))
     sns.heatmap(dist, cmap="viridis", ax=ax)
     st.pyplot(fig)
