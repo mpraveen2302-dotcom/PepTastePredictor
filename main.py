@@ -320,23 +320,40 @@ if uploaded:
     show_structure(st.session_state.pdb_text)._make_html(),
     height=520
 )
+# ==========================================================
+# STRUCTURE ANALYSIS (SAFE, STATE-AWARE)
+# ==========================================================
 
+if "pdb_text" not in st.session_state:
+    st.session_state.pdb_text = None
 
-  if st.session_state.pdb_text is not None:
-      st.markdown("### Ramachandran Plot")
-      phi_psi = ramachandran_from_pdb(st.session_state.pdb_text)
+uploaded = st.file_uploader("Upload PDB file", type=["pdb"])
 
-      if len(phi_psi) == 0:
-          st.warning("Ramachandran plot not available (peptide too short or incomplete backbone).")
-      else:
-          phi, psi = zip(*phi_psi)
-          fig, ax = plt.subplots()
-          ax.scatter(phi, psi, s=20)
-          ax.set_xlim(-180, 180)
-          ax.set_ylim(-180, 180)
-          ax.set_xlabel("Phi (°)")
-          ax.set_ylabel("Psi (°)")
-          st.pyplot(fig)
+if uploaded:
+    st.session_state.pdb_text = uploaded.read().decode()
+
+if st.session_state.pdb_text is not None:
+
+    st.components.v1.html(
+        show_structure(st.session_state.pdb_text)._make_html(),
+        height=520
+    )
+
+    st.markdown("### Ramachandran Plot")
+
+    phi_psi = ramachandran_from_pdb(st.session_state.pdb_text)
+
+    if len(phi_psi) == 0:
+        st.warning("Ramachandran plot not available (peptide too short or backbone incomplete).")
+    else:
+        phi, psi = zip(*phi_psi)
+        fig, ax = plt.subplots()
+        ax.scatter(phi, psi, s=20)
+        ax.set_xlim(-180, 180)
+        ax.set_ylim(-180, 180)
+        ax.set_xlabel("Phi (°)")
+        ax.set_ylabel("Psi (°)")
+        st.pyplot(fig)
 
     st.markdown("### Cα Distance Map")
 
@@ -344,6 +361,9 @@ if uploaded:
     fig, ax = plt.subplots(figsize=(5,5))
     sns.heatmap(dist, cmap="viridis", ax=ax)
     st.pyplot(fig)
+
+
+
 
 # ==========================================================
 # BATCH PREDICTION
