@@ -1,5 +1,5 @@
 # ==========================================================
-# PepTastePredictor — FINAL PUBLICATION VERSION (PREMIUM UI)
+# PepTastePredictor — FINAL PUBLICATION VERSION (STABLE + MODE SELECT)
 # ==========================================================
 
 import streamlit as st
@@ -35,18 +35,14 @@ DATASET_PATH = "AIML (4).xlsx"
 AA = "ACDEFGHIKLMNPQRSTVWY"
 
 # ==========================================================
-# PREMIUM FRONTEND STYLING (NO BACKEND IMPACT)
+# FRONTEND STYLING (UI ONLY)
 # ==========================================================
 
 st.markdown("""
 <style>
+.stApp { background-color: #f4f7fb; }
+h1, h2, h3 { color: #1f3c88; }
 
-/* App background */
-.stApp {
-    background-color: #f4f7fb;
-}
-
-/* Hero section */
 .hero {
     background: linear-gradient(90deg, #1f3c88, #0b7285);
     padding: 30px;
@@ -55,7 +51,6 @@ st.markdown("""
     margin-bottom: 30px;
 }
 
-/* Badges */
 .badge {
     display: inline-block;
     background-color: rgba(255,255,255,0.15);
@@ -65,7 +60,6 @@ st.markdown("""
     margin-right: 8px;
 }
 
-/* Cards */
 .card {
     background: white;
     padding: 22px;
@@ -74,65 +68,30 @@ st.markdown("""
     margin-bottom: 24px;
 }
 
-/* Section headers */
-.section-title {
-    color: #1f3c88;
-    font-size: 24px;
-    font-weight: 700;
-    margin-bottom: 12px;
-}
-
-/* Metrics */
 .metric {
     font-size: 20px;
     font-weight: 600;
     color: #0b7285;
-    margin-bottom: 6px;
 }
 
-/* Footer */
 .footer {
     text-align: center;
     color: #6c757d;
     font-size: 13px;
     padding: 30px;
 }
-
-/* Buttons */
-div.stButton > button {
-    background-color: #1f3c88;
-    color: white;
-    border-radius: 8px;
-    padding: 0.6em 1.6em;
-    border: none;
-}
-
 </style>
 """, unsafe_allow_html=True)
 
 # ==========================================================
-# SIDEBAR (OFFICIAL-STYLE INFO PANEL)
+# SIDEBAR
 # ==========================================================
 
 st.sidebar.image("logo.png", width=120)
 st.sidebar.markdown("### PepTastePredictor")
-st.sidebar.markdown("""
-**AI-driven peptide analysis platform**
-
-• Taste prediction  
-• Solubility prediction  
-• Docking score estimation  
-• 3D structure visualization  
-• Batch peptide screening  
-
-**Intended for**
-- Academic research
-- iGEM & outreach
-- Drug discovery
-- Educational demonstrations
-""")
+st.sidebar.write("AI-powered peptide analysis platform")
 st.sidebar.markdown("---")
-st.sidebar.info("For research & educational use only")
+st.sidebar.info("For research & educational use")
 
 # ==========================================================
 # SESSION STATE
@@ -152,8 +111,26 @@ def clean_sequence(seq):
     return "".join(a for a in seq if a in AA)
 
 # ==========================================================
-# FEATURE EXTRACTION
+# FEATURE EXTRACTION (RESTORED)
 # ==========================================================
+
+def model_features(seq):
+    ana = ProteinAnalysis(seq)
+    f = {
+        "length": len(seq),
+        "mw": ana.molecular_weight(),
+        "pI": ana.isoelectric_point(),
+        "aromaticity": ana.aromaticity(),
+        "instability": ana.instability_index(),
+        "gravy": ana.gravy(),
+        "charge": ana.charge_at_pH(7.0)
+    }
+    for aa in AA:
+        f[f"AA_{aa}"] = seq.count(aa) / len(seq)
+    return f
+
+def build_feature_table(seqs):
+    return pd.DataFrame([model_features(s) for s in seqs]).fillna(0)
 
 def physicochemical_features(seq):
     ana = ProteinAnalysis(seq)
@@ -182,60 +159,129 @@ def composition_features(seq):
     }
 
 # ==========================================================
-# HERO HEADER (LOGO + TAGLINE)
+# TRAIN MODELS (UNCHANGED)
+# ==========================================================
+
+@st.cache_data
+def train_models():
+    df = pd.read_excel(DATASET_PATH)
+    df.columns = df.columns.str.lower().str.strip()
+    df["peptide"] = df["peptide"].apply(clean_sequence)
+    df = df[df["peptide"].str.len() >= 2]
+
+    X = build_feature_table(df["peptide"])
+    le_taste, le_sol = LabelEncoder(), LabelEncoder()
+
+    y_taste = le_taste.fit_transform(df["taste"])
+    y_sol = le_sol.fit_transform(df["solubility"])
+    y_dock = df["docking score (kcal/mol)"]
+
+    Xtr, Xte, yt_tr, yt_te, ys_tr, ys_te, yd_tr, yd_te = train_test_split(
+        X, y_taste, y_sol, y_dock, test_size=0.2, random_state=42
+    )
+
+    taste_model = RandomForestClassifier(n_estimators=300)
+    sol_model = RandomForestClassifier(n_estimators=300)
+    dock_model = RandomForestRegressor(n_estimators=400)
+
+    taste_model.fit(Xtr, yt_tr)
+    sol_model.fit(Xtr, ys_tr)
+    dock_model.fit(Xtr, yd_tr)
+
+    return df, X, taste_model, sol_model, dock_model, le_taste, le_sol
+
+df, X_all, taste_model, sol_model, dock_model, le_taste, le_sol = train_models()
+
+# ==========================================================
+# HERO HEADER
 # ==========================================================
 
 st.markdown("""
 <div class="hero">
     <h1>🧬 PepTastePredictor</h1>
-    <p>
-    AI-powered peptide taste, solubility & docking prediction platform
-    integrating machine learning with structural bioinformatics
-    </p>
-    <div>
-        <span class="badge">Machine Learning</span>
-        <span class="badge">Peptide Science</span>
-        <span class="badge">Structural Biology</span>
-        <span class="badge">Bioinformatics</span>
-    </div>
+    <p>AI-powered peptide taste, solubility & docking prediction platform</p>
+    <span class="badge">Machine Learning</span>
+    <span class="badge">Peptide Science</span>
+    <span class="badge">Structural Biology</span>
 </div>
 """, unsafe_allow_html=True)
 
 # ==========================================================
-# SINGLE PREDICTION (UI CARD)
+# MODE SELECTION (AS YOU ASKED)
 # ==========================================================
 
-st.markdown("<div class='section-title'>🔬 Single Peptide Prediction</div>", unsafe_allow_html=True)
-
-seq = st.text_input("Enter peptide sequence (e.g., AGLWFK)", key="single_seq")
-
-if st.button("Predict", key="predict_btn"):
-
-    seq = clean_sequence(seq)
-    Xp = pd.DataFrame([model_features(seq)])
-
-    taste = le_taste.inverse_transform(taste_model.predict(Xp))[0]
-    sol = le_sol.inverse_transform(sol_model.predict(Xp))[0]
-    dock = dock_model.predict(Xp)[0]
-
-    st.markdown(f"""
-    <div class="card">
-        <div class="metric">Predicted Taste: {taste}</div>
-        <div class="metric">Predicted Solubility: {sol}</div>
-        <div class="metric">Docking Score: {dock:.2f} kcal/mol</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("**Physicochemical Properties**")
-    for k, v in physicochemical_features(seq).items():
-        st.write(f"{k}: {v}")
-
-    st.markdown("**Composition Summary**")
-    for k, v in composition_features(seq).items():
-        st.write(f"{k}: {v}")
+mode = st.radio(
+    "Select prediction mode",
+    ["Single Peptide Prediction", "Batch Peptide Prediction"],
+    horizontal=True
+)
 
 # ==========================================================
-# FOOTER (OFFICIAL LOOK)
+# SINGLE PEPTIDE PREDICTION
+# ==========================================================
+
+if mode == "Single Peptide Prediction":
+
+    st.markdown("## 🔬 Single Peptide Prediction")
+
+    seq = st.text_input("Enter peptide sequence")
+
+    if st.button("Predict"):
+        seq = clean_sequence(seq)
+        Xp = pd.DataFrame([model_features(seq)])
+
+        taste = le_taste.inverse_transform(taste_model.predict(Xp))[0]
+        sol = le_sol.inverse_transform(sol_model.predict(Xp))[0]
+        dock = dock_model.predict(Xp)[0]
+
+        st.markdown(f"""
+        <div class="card">
+            <div class="metric">Taste: {taste}</div>
+            <div class="metric">Solubility: {sol}</div>
+            <div class="metric">Docking score: {dock:.2f} kcal/mol</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.write("### Physicochemical Properties")
+        for k, v in physicochemical_features(seq).items():
+            st.write(f"{k}: {v}")
+
+        st.write("### Composition Summary")
+        for k, v in composition_features(seq).items():
+            st.write(f"{k}: {v}")
+
+# ==========================================================
+# BATCH PEPTIDE PREDICTION
+# ==========================================================
+
+if mode == "Batch Peptide Prediction":
+
+    st.markdown("## 📦 Batch Peptide Prediction")
+
+    batch_file = st.file_uploader("Upload CSV with 'peptide' column", type=["csv"])
+
+    if batch_file:
+        batch_df = pd.read_csv(batch_file)
+
+        if "peptide" not in batch_df.columns:
+            st.error("CSV must contain a column named 'peptide'")
+        else:
+            batch_df["peptide"] = batch_df["peptide"].apply(clean_sequence)
+            Xb = build_feature_table(batch_df["peptide"])
+
+            batch_df["Predicted Taste"] = le_taste.inverse_transform(taste_model.predict(Xb))
+            batch_df["Predicted Solubility"] = le_sol.inverse_transform(sol_model.predict(Xb))
+            batch_df["Predicted Docking Score"] = dock_model.predict(Xb)
+
+            st.dataframe(batch_df)
+            st.download_button(
+                "Download Batch Predictions",
+                batch_df.to_csv(index=False),
+                "batch_predictions.csv"
+            )
+
+# ==========================================================
+# FOOTER
 # ==========================================================
 
 st.markdown("""
