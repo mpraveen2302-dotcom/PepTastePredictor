@@ -1,5 +1,5 @@
 # ==========================================================
-# PepTastePredictor — FINAL PUBLICATION VERSION
+# PepTastePredictor — FINAL PUBLICATION VERSION (UPGRADED)
 # ==========================================================
 
 import streamlit as st
@@ -13,24 +13,21 @@ from collections import Counter
 from itertools import product
 
 from Bio.SeqUtils.ProtParam import ProteinAnalysis
-from Bio.PDB import PDBIO
+from Bio.PDB import PDBIO, PDBParser, PPBuilder
 import PeptideBuilder
 from PeptideBuilder import Geometry
 
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
-from sklearn.metrics import accuracy_score, f1_score, confusion_matrix, mean_squared_error, r2_score
+from sklearn.metrics import accuracy_score, f1_score, mean_squared_error, r2_score
 from sklearn.decomposition import PCA
 
 # ==========================================================
 # CONFIG
 # ==========================================================
 
-st.set_page_config(
-    page_title="PepTastePredictor",
-    layout="wide"
-)
+st.set_page_config(page_title="PepTastePredictor", layout="wide")
 
 DATASET_PATH = "AIML (4).xlsx"
 AA = "ACDEFGHIKLMNPQRSTVWY"
@@ -94,7 +91,7 @@ def build_feature_table(seqs):
     return pd.DataFrame([model_features(s) for s in seqs]).fillna(0)
 
 # ==========================================================
-# PDB GENERATION
+# PDB GENERATION + VIEWER
 # ==========================================================
 
 def build_peptide_pdb(seq):
@@ -108,11 +105,59 @@ def build_peptide_pdb(seq):
     return "peptide.pdb"
 
 def show_structure(pdb_text):
-    view = py3Dmol.view(width=700, height=500)
+    view = py3Dmol.view(width=800, height=500)
     view.addModel(pdb_text, "pdb")
-    view.setStyle({"cartoon": {"color": "spectrum"}})
+    view.setStyle({"cartoon": {"color": "spectrum"}, "stick": {}})
+    view.setBackgroundColor("white")
     view.zoomTo()
     return view
+
+# ==========================================================
+# STRUCTURE ANALYSIS (NEW)
+# ==========================================================
+
+def ramachandran_from_pdb(pdb_text):
+    with open("_tmp.pdb", "w") as f:
+        f.write(pdb_text)
+
+    parser = PDBParser(QUIET=True)
+    structure = parser.get_structure("pep", "_tmp.pdb")
+    model = structure[0]
+
+    phi_psi = []
+    ppb = PPBuilder()
+    for pp in ppb.build_peptides(model):
+        for phi, psi in pp.get_phi_psi_list():
+            if phi and psi:
+                phi_psi.append((np.degrees(phi), np.degrees(psi)))
+    return phi_psi
+
+def ca_distance_map(pdb_text):
+    with open("_tmp.pdb", "w") as f:
+        f.write(pdb_text)
+
+    parser = PDBParser(QUIET=True)
+    structure = parser.get_structure("pep", "_tmp.pdb")
+    cas = [res["CA"].get_vector() for res in structure.get_residues() if "CA" in res]
+
+    n = len(cas)
+    dist = np.zeros((n, n))
+    for i in range(n):
+        for j in range(n):
+            dist[i, j] = (cas[i] - cas[j]).norm()
+    return dist
+
+def per_residue_properties(seq):
+    hydro = {
+        'A':1.8,'C':2.5,'D':-3.5,'E':-3.5,'F':2.8,'G':-0.4,'H':-3.2,
+        'I':4.5,'K':-3.9,'L':3.8,'M':1.9,'N':-3.5,'P':-1.6,
+        'Q':-3.5,'R':-4.5,'S':-0.8,'T':-0.7,'V':4.2,'W':-0.9,'Y':-1.3
+    }
+    charge = {'D':-1,'E':-1,'K':1,'R':1,'H':0.1}
+    return (
+        [hydro.get(a,0) for a in seq],
+        [charge.get(a,0) for a in seq]
+    )
 
 # ==========================================================
 # TRAIN MODELS
@@ -122,7 +167,6 @@ def show_structure(pdb_text):
 def train_models():
     df = pd.read_excel(DATASET_PATH)
     df.columns = df.columns.str.lower().str.strip()
-
     df["peptide"] = df["peptide"].apply(clean_sequence)
     df = df[df["peptide"].str.len() >= 2]
 
@@ -165,8 +209,6 @@ df, X_all, taste_model, sol_model, dock_model, le_taste, le_sol, metrics = train
 
 st.title("🧬 PepTastePredictor")
 
-st.markdown("### Single Peptide Prediction")
-
 seq = st.text_input("Enter peptide sequence")
 
 if st.button("Predict"):
@@ -182,43 +224,43 @@ if st.button("Predict"):
 
     st.success(f"**Taste:** {taste}\n\n**Solubility:** {sol}\n\n**Docking score:** {dock:.2f}")
 
-    st.markdown("### Physicochemical Properties")
-    for k, v in feats.items():
-        st.write(f"- **{k}:** {v}")
-
-    st.markdown("### Composition Summary")
-    for k, v in comp.items():
-        st.write(f"- **{k}:** {v}")
+    st.json(feats)
+    st.json(comp)
 
     pdb_file = build_peptide_pdb(seq)
-    with open(pdb_file) as f:
-        pdb_text = f.read()
+    pdb_text = open(pdb_file).read()
 
-    st.download_button("Download PDB", pdb_text, file_name="peptide.pdb")
+    st.download_button("Download PDB", pdb_text, "peptide.pdb")
 
-    st.markdown("### 3D Structure Viewer")
-    viewer = show_structure(pdb_text)
-    st.components.v1.html(viewer._make_html(), height=520)
+    st.components.v1.html(show_structure(pdb_text)._make_html(), height=520)
 
 # ==========================================================
-# BATCH
+# PDB UPLOAD + ANALYSIS
 # ==========================================================
 
 st.markdown("---")
-st.markdown("### Batch Prediction")
+st.markdown("## 🧩 Upload & Analyze PDB")
 
-batch = st.file_uploader("Upload CSV with `peptide` column", type=["csv"])
-if batch:
-    bdf = pd.read_csv(batch)
-    bdf["peptide"] = bdf["peptide"].apply(clean_sequence)
-    Xb = build_feature_table(bdf["peptide"])
+uploaded = st.file_uploader("Upload PDB file", type=["pdb"])
+if uploaded:
+    pdb_text = uploaded.read().decode()
+    st.components.v1.html(show_structure(pdb_text)._make_html(), height=520)
 
-    bdf["Taste"] = le_taste.inverse_transform(taste_model.predict(Xb))
-    bdf["Solubility"] = le_sol.inverse_transform(sol_model.predict(Xb))
-    bdf["Docking Score"] = dock_model.predict(Xb)
+    st.markdown("### Ramachandran Plot")
+    phi_psi = ramachandran_from_pdb(pdb_text)
+    if phi_psi:
+        phi, psi = zip(*phi_psi)
+        fig, ax = plt.subplots()
+        ax.scatter(phi, psi, s=20)
+        ax.set_xlim(-180,180)
+        ax.set_ylim(-180,180)
+        st.pyplot(fig)
 
-    st.dataframe(bdf)
-    st.download_button("Download results", bdf.to_csv(index=False), "batch_predictions.csv")
+    st.markdown("### Cα Distance Map")
+    dist = ca_distance_map(pdb_text)
+    fig, ax = plt.subplots(figsize=(5,5))
+    sns.heatmap(dist, cmap="viridis", ax=ax)
+    st.pyplot(fig)
 
 # ==========================================================
 # ANALYTICS
@@ -227,13 +269,12 @@ if batch:
 st.markdown("---")
 st.markdown("## 📊 Model Analytics")
 
-for k, v in metrics.items():
-    st.write(f"- **{k}:** {round(v, 3)}")
+for k,v in metrics.items():
+    st.write(f"- **{k}:** {round(v,3)}")
 
 coords = PCA(2).fit_transform(X_all)
 fig, ax = plt.subplots()
 ax.scatter(coords[:,0], coords[:,1])
-ax.set_title("PCA — Dataset Feature Space")
 st.pyplot(fig)
 
 st.markdown("### AlphaFold / ColabFold")
