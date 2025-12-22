@@ -1,14 +1,15 @@
 # ==========================================================
-# PepTastePredictor – FINAL USER-FRIENDLY PUBLICATION APP
+# PepTastePredictor – High-Feature Research App (v1.1)
 # ==========================================================
 
-import streamlit as st
-import pandas as pd
+import os
+import io
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import streamlit as st
 import py3Dmol
-
 from collections import Counter
 from itertools import product
 
@@ -17,45 +18,40 @@ from Bio.SeqUtils.ProtParam import ProteinAnalysis
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
-from sklearn.metrics import (
-    accuracy_score, f1_score,
-    confusion_matrix, mean_squared_error, r2_score
-)
+from sklearn.metrics import accuracy_score, f1_score, mean_squared_error, r2_score
 from sklearn.decomposition import PCA
 
-# ==========================================================
-# PAGE CONFIG
-# ==========================================================
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
 
-st.set_page_config(
-    page_title="PepTastePredictor",
-    layout="wide"
-)
-
-# ==========================================================
-# CONSTANTS
-# ==========================================================
-
+# =========================
+# CONFIG
+# =========================
 DATASET_PATH = "AIML (4).xlsx"
 AA = "ACDEFGHIKLMNPQRSTVWY"
 
-# ==========================================================
-# UTILITIES
-# ==========================================================
+st.set_page_config(
+    page_title="PepTastePredictor",
+    layout="wide",
+    page_icon="🧬"
+)
 
+# =========================
+# SEQUENCE CLEANING
+# =========================
 def clean_sequence(seq):
     if not isinstance(seq, str):
         return ""
-    seq = seq.upper().replace("\n", "").replace("\t", "").replace(" ", "")
+    seq = seq.upper()
+    seq = seq.replace("\t", "").replace(" ", "").replace("\n", "")
     return "".join([a for a in seq if a in AA])
 
-# ==========================================================
+# =========================
 # FEATURE EXTRACTION
-# ==========================================================
-
+# =========================
 def aa_composition(seq):
     c = Counter(seq)
-    L = len(seq)
+    L = max(len(seq), 1)
     return {f"AA_{a}": c.get(a, 0)/L for a in AA}
 
 def dipeptide_composition(seq):
@@ -64,71 +60,47 @@ def dipeptide_composition(seq):
     L = max(len(seq)-1, 1)
     return {f"DP_{d}": counts.get(d, 0)/L for d in dipeptides}
 
-def physicochemical_features(seq):
+def biopython_features(seq):
     ana = ProteinAnalysis(seq)
     helix, turn, sheet = ana.secondary_structure_fraction()
-
-    physio = {
-        "Length": len(seq),
-        "Molecular Weight": round(ana.molecular_weight(), 3),
-        "Isoelectric Point (pI)": round(ana.isoelectric_point(), 3),
-        "Aromaticity": round(ana.aromaticity(), 3),
-        "Instability Index": round(ana.instability_index(), 3),
-        "GRAVY": round(ana.gravy(), 3),
-        "Net Charge (pH 7)": round(ana.charge_at_pH(7.0), 3),
-        "Helix Fraction": round(helix, 3),
-        "Turn Fraction": round(turn, 3),
-        "Sheet Fraction": round(sheet, 3)
+    try:
+        instab = ana.instability_index()
+    except:
+        instab = 0.0
+    return {
+        "length": len(seq),
+        "molecular_weight": ana.molecular_weight(),
+        "isoelectric_point": ana.isoelectric_point(),
+        "aromaticity": ana.aromaticity(),
+        "instability_index": instab,
+        "gravy": ana.gravy(),
+        "net_charge_pH7": ana.charge_at_pH(7.0),
+        "helix_fraction": helix,
+        "turn_fraction": turn,
+        "sheet_fraction": sheet
     }
-
-    model_feats = {
-        "length": physio["Length"],
-        "mw": physio["Molecular Weight"],
-        "pI": physio["Isoelectric Point (pI)"],
-        "aromaticity": physio["Aromaticity"],
-        "instability": physio["Instability Index"],
-        "gravy": physio["GRAVY"],
-        "charge": physio["Net Charge (pH 7)"],
-        "helix": physio["Helix Fraction"],
-        "turn": physio["Turn Fraction"],
-        "sheet": physio["Sheet Fraction"]
-    }
-
-    return physio, model_feats
 
 def extract_features(seqs):
-    rows = []
-    physio_rows = []
-
+    feats = []
     for s in seqs:
-        s = clean_sequence(s)
-        if len(s) < 2:
-            continue
-
-        physio, model_physio = physicochemical_features(s)
         f = {}
-        f.update(model_physio)
+        f.update(biopython_features(s))
         f.update(aa_composition(s))
         f.update(dipeptide_composition(s))
+        feats.append(f)
+    return pd.DataFrame(feats).fillna(0)
 
-        rows.append(f)
-        physio_rows.append(physio)
-
-    return pd.DataFrame(rows).fillna(0), pd.DataFrame(physio_rows)
-
-# ==========================================================
+# =========================
 # LOAD & TRAIN MODELS
-# ==========================================================
-
-@st.cache_data
+# =========================
+@st.cache_resource
 def train_models():
     df = pd.read_excel(DATASET_PATH)
     df.columns = df.columns.str.lower().str.strip()
-
     df["peptide"] = df["peptide"].apply(clean_sequence)
-    df = df[df["peptide"].str.len() >= 2]
+    df = df[df["peptide"].str.len() >= 2].reset_index(drop=True)
 
-    X, _ = extract_features(df["peptide"].tolist())
+    X = extract_features(df["peptide"].tolist())
 
     le_taste = LabelEncoder()
     le_sol = LabelEncoder()
@@ -155,22 +127,51 @@ def train_models():
     dock_model.fit(X_tr, yd_tr)
 
     metrics = {
-        "Taste Accuracy": accuracy_score(yt_te, taste_model.predict(X_te)),
-        "Taste F1": f1_score(yt_te, taste_model.predict(X_te), average="weighted"),
-        "Solubility Accuracy": accuracy_score(ys_te, sol_model.predict(X_te)),
-        "Solubility F1": f1_score(ys_te, sol_model.predict(X_te), average="weighted"),
-        "Docking RMSE": np.sqrt(mean_squared_error(yd_te, dock_model.predict(X_te))),
-        "Docking R2": r2_score(yd_te, dock_model.predict(X_te))
+        "taste_acc": accuracy_score(yt_te, taste_model.predict(X_te)),
+        "taste_f1": f1_score(yt_te, taste_model.predict(X_te), average="weighted"),
+        "sol_acc": accuracy_score(ys_te, sol_model.predict(X_te)),
+        "sol_f1": f1_score(ys_te, sol_model.predict(X_te), average="weighted"),
+        "dock_rmse": np.sqrt(mean_squared_error(yd_te, dock_model.predict(X_te))),
+        "dock_r2": r2_score(yd_te, dock_model.predict(X_te))
     }
 
-    return taste_model, sol_model, dock_model, le_taste, le_sol, metrics, X, y_taste
+    return (taste_model, sol_model, dock_model,
+            le_taste, le_sol, metrics, X, y_taste)
 
-taste_model, sol_model, dock_model, le_taste, le_sol, metrics, X_all, y_all = train_models()
+(taste_model, sol_model, dock_model,
+ le_taste, le_sol, metrics, X_all, y_taste_all) = train_models()
 
-# ==========================================================
-# PDB & 3D VIEWER
-# ==========================================================
+# =========================
+# VISUALIZATIONS
+# =========================
+def plot_feature_importance(model, title):
+    imp = model.feature_importances_
+    idx = np.argsort(imp)[-20:]
+    fig, ax = plt.subplots()
+    ax.barh(range(len(idx)), imp[idx])
+    ax.set_yticks(range(len(idx)))
+    ax.set_yticklabels(X_all.columns[idx])
+    ax.set_title(title)
+    return fig
 
+def plot_pca_by_taste():
+    coords = PCA(2).fit_transform(X_all)
+    fig, ax = plt.subplots()
+    sc = ax.scatter(coords[:,0], coords[:,1], c=y_taste_all, cmap="tab10")
+    ax.set_title("PCA – Taste Separation")
+    plt.colorbar(sc)
+    return fig
+
+def plot_sequence_logo(seq):
+    freq = Counter(seq)
+    fig, ax = plt.subplots()
+    ax.bar(freq.keys(), freq.values())
+    ax.set_title("Sequence Composition")
+    return fig
+
+# =========================
+# PDB + 3D VIEWER
+# =========================
 def build_pdb(seq):
     lines = []
     x = 0.0
@@ -182,77 +183,90 @@ def build_pdb(seq):
     return "\n".join(lines) + "\nEND"
 
 def show_structure(pdb_text):
-    view = py3Dmol.view(width=700, height=500)
+    view = py3Dmol.view(width=600, height=450)
     view.addModel(pdb_text, "pdb")
     view.setStyle({"cartoon": {"color": "spectrum"}})
     view.zoomTo()
     return view
 
-# ==========================================================
-# UI
-# ==========================================================
+# =========================
+# PDF REPORT
+# =========================
+def generate_pdf(summary):
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=A4)
+    text = c.beginText(40, 800)
+    for k, v in summary.items():
+        text.textLine(f"{k}: {v}")
+    c.drawText(text)
+    c.showPage()
+    c.save()
+    buffer.seek(0)
+    return buffer
 
+# =========================
+# STREAMLIT UI
+# =========================
 st.title("🧬 PepTastePredictor")
-st.markdown("Predict peptide taste, solubility, docking score, and explore structure & analytics.")
 
-# ------------------ SINGLE INPUT ------------------
+st.sidebar.header("Input Mode")
+mode = st.sidebar.radio("Choose mode", ["Single Peptide", "Batch Prediction"])
 
-st.header("🔹 Single Peptide Prediction")
+if mode == "Single Peptide":
+    seq = st.text_input("Enter peptide sequence")
 
-seq = st.text_input("Enter peptide sequence")
+    if st.button("Predict") and seq:
+        seq = clean_sequence(seq)
+        Xp = extract_features([seq])
+        taste = le_taste.inverse_transform(taste_model.predict(Xp))[0]
+        sol = le_sol.inverse_transform(sol_model.predict(Xp))[0]
+        dock = dock_model.predict(Xp)[0]
 
-if st.button("Predict"):
-    seq = clean_sequence(seq)
-    Xp, physio = extract_features([seq])
+        st.subheader("Prediction Summary")
+        st.write(f"**Taste:** {taste}")
+        st.write(f"**Solubility:** {sol}")
+        st.write(f"**Docking Score:** {dock:.3f} kcal/mol")
 
-    taste = le_taste.inverse_transform(taste_model.predict(Xp))[0]
-    sol = le_sol.inverse_transform(sol_model.predict(Xp))[0]
-    dock = dock_model.predict(Xp)[0]
+        st.subheader("Physicochemical Properties")
+        props = biopython_features(seq)
+        for k, v in props.items():
+            st.write(f"- {k.replace('_',' ').title()}: {round(v,3)}")
 
-    st.subheader("🧪 Physio-Chemical Properties")
-    st.dataframe(physio.T, use_container_width=True)
+        st.subheader("Sequence Analytics")
+        st.pyplot(plot_sequence_logo(seq))
 
-    st.subheader("🔮 Prediction")
-    st.success(f"Taste: {taste}")
-    st.info(f"Solubility: {sol}")
-    st.warning(f"Docking Score: {dock:.3f} kcal/mol")
+        pdb_text = build_pdb(seq)
+        st.download_button("Download PDB", pdb_text, "peptide.pdb")
 
-    st.subheader("📊 Feature Profile")
-    fig, ax = plt.subplots()
-    physio.iloc[0].plot(kind="bar", ax=ax)
-    st.pyplot(fig)
+        st.subheader("3D Structure")
+        st.components.v1.html(show_structure(pdb_text)._make_html(), height=480)
 
-    pdb = build_pdb(seq)
-    st.download_button("⬇ Download PDB", pdb, file_name="peptide.pdb")
+        pdf = generate_pdf({**props, "Taste": taste, "Solubility": sol})
+        st.download_button("Download PDF Report", pdf, "analysis_report.pdf")
 
-    st.subheader("🧬 3D Structure")
-    st.components.v1.html(show_structure(pdb)._make_html(), height=500)
+else:
+    file = st.file_uploader("Upload CSV / Excel (column: peptide)")
+    if file:
+        df = pd.read_csv(file) if file.name.endswith(".csv") else pd.read_excel(file)
+        df["peptide"] = df["peptide"].apply(clean_sequence)
+        Xb = extract_features(df["peptide"].tolist())
+        df["Taste"] = le_taste.inverse_transform(taste_model.predict(Xb))
+        df["Solubility"] = le_sol.inverse_transform(sol_model.predict(Xb))
+        df["Docking"] = dock_model.predict(Xb)
+        st.dataframe(df)
+        st.download_button("Download Results", df.to_csv(index=False), "batch_results.csv")
 
-# ------------------ PDB UPLOAD ------------------
+st.header("📊 Model Analytics")
+st.metric("Taste Accuracy", round(metrics["taste_acc"],3))
+st.metric("Solubility Accuracy", round(metrics["sol_acc"],3))
+st.metric("Docking RMSE", round(metrics["dock_rmse"],3))
 
-st.header("🧬 AlphaFold / ColabFold Predicted Structure")
+st.pyplot(plot_feature_importance(taste_model, "Taste Feature Importance"))
+st.pyplot(plot_feature_importance(dock_model, "Docking Feature Importance"))
+st.pyplot(plot_pca_by_taste())
 
+st.markdown("### AlphaFold / ColabFold")
 st.markdown(
-    "Generate structures using ColabFold and upload the PDB below:\n\n"
+    "Generate high-quality structures here:\n"
     "https://colab.research.google.com/github/sokrypton/ColabFold/blob/main/AlphaFold2_mmseqs2_advanced.ipynb"
 )
-
-uploaded_pdb = st.file_uploader("Upload AlphaFold / ColabFold PDB file", type=["pdb"])
-
-if uploaded_pdb:
-    pdb_text = uploaded_pdb.read().decode("utf-8")
-    st.components.v1.html(show_structure(pdb_text)._make_html(), height=500)
-else:
-    st.info("No PDB uploaded yet. Use ColabFold to generate one.")
-
-# ------------------ ANALYTICS ------------------
-
-st.header("📈 Model Analytics")
-
-st.write(metrics)
-
-fig, ax = plt.subplots()
-coords = PCA(2).fit_transform(X_all)
-ax.scatter(coords[:,0], coords[:,1], c=y_all, cmap="tab10")
-ax.set_title("PCA – Taste Clustering")
-st.pyplot(fig)
