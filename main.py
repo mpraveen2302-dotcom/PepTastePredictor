@@ -734,21 +734,25 @@ if mode == "PDB Upload & Structural Analysis":
         ax.set_title("Cα Distance Heatmap")
         st.pyplot(fig)
 
-with st.expander("📊 Model Performance & Dataset Analytics"):
-
 # ==========================================================
 # SECTION 16 — MODEL & DATASET ANALYTICS (POST-ACTION ONLY)
 # ==========================================================
 
-if st.session_state.show_analytics is True:
+if st.session_state.show_analytics:
 
     with st.expander("📊 Model Performance & Dataset Analytics"):
 
+        # -------------------------------
+        # Model performance metrics
+        # -------------------------------
         st.markdown("### Model Performance Metrics")
 
         for k, v in metrics.items():
             st.write(f"{k}: {round(v, 4)}")
 
+        # -------------------------------
+        # PCA feature space visualization
+        # -------------------------------
         st.markdown("### Dataset Feature Space (PCA Projection)")
 
         coords = PCA(2).fit_transform(X_all)
@@ -760,24 +764,6 @@ if st.session_state.show_analytics is True:
         ax_pca.set_title("PCA of Peptide Feature Space")
 
         st.pyplot(fig_pca)
-
-
-
-    # ==========================================================
-    # SECTION 17 — DATASET FEATURE SPACE (PCA)
-    # ==========================================================
-
-    st.markdown("## 🧠 Dataset Feature Space (PCA Projection)")
-
-    coords = PCA(2).fit_transform(X_all)
-
-    fig_pca, ax_pca = plt.subplots()
-    ax_pca.scatter(coords[:, 0], coords[:, 1], alpha=0.6)
-    ax_pca.set_xlabel("PC1")
-    ax_pca.set_ylabel("PC2")
-    ax_pca.set_title("PCA of Peptide Feature Space")
-
-    st.pyplot(fig_pca)
 
 
 
