@@ -1,5 +1,26 @@
 # ==========================================================
-# PepTastePredictor — MASTER FINAL VERSION (ALL FEATURES)
+# PepTastePredictor
+# A COMPLETE END-TO-END PEPTIDE ANALYSIS PLATFORM
+# ==========================================================
+#
+# This application integrates:
+#   • Machine Learning (Taste, Solubility, Docking)
+#   • Structural Bioinformatics (PDB, RMSD, Ramachandran)
+#   • Visualization (3D, PCA, Heatmaps)
+#   • Batch Screening
+#   • Automated PDF Report Generation
+#
+# Developed for:
+#   • Academic research
+#   • iGEM projects
+#   • Educational outreach
+#   • Officer / reviewer demonstrations
+#
+# ==========================================================
+
+
+# ==========================================================
+# SECTION 1 — IMPORTS
 # ==========================================================
 
 import streamlit as st
@@ -11,6 +32,7 @@ import py3Dmol
 import os
 
 from collections import Counter
+
 from Bio.SeqUtils.ProtParam import ProteinAnalysis
 from Bio.PDB import PDBIO, PDBParser, PPBuilder
 import PeptideBuilder
@@ -19,17 +41,26 @@ from PeptideBuilder import Geometry
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
-from sklearn.metrics import accuracy_score, f1_score, mean_squared_error, r2_score
+from sklearn.metrics import (
+    accuracy_score,
+    f1_score,
+    mean_squared_error,
+    r2_score
+)
 from sklearn.decomposition import PCA
 
 from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Image as RLImage, Spacer
+    SimpleDocTemplate,
+    Paragraph,
+    Image as RLImage,
+    Spacer
 )
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.pagesizes import A4
 
+
 # ==========================================================
-# CONFIG
+# SECTION 2 — GLOBAL CONFIGURATION
 # ==========================================================
 
 st.set_page_config(
@@ -41,48 +72,63 @@ st.set_page_config(
 DATASET_PATH = "AIML (4).xlsx"
 AA = "ACDEFGHIKLMNPQRSTVWY"
 
+
 # ==========================================================
-# CSS — FRONTEND ONLY (NO BACKEND TOUCH)
+# SECTION 3 — FRONTEND STYLING (CSS ONLY)
 # ==========================================================
 
 st.markdown("""
 <style>
-.stApp { background-color: #f4f7fb; }
-h1,h2,h3 { color:#1f3c88; }
 
+/* Global background */
+.stApp {
+    background-color: #f4f7fb;
+}
+
+/* Titles */
+h1, h2, h3 {
+    color: #1f3c88;
+}
+
+/* Hero banner */
 .hero {
-  background: linear-gradient(90deg,#1f3c88,#0b7285);
-  padding:30px;
-  border-radius:16px;
-  color:white;
-  margin-bottom:25px;
+    background: linear-gradient(90deg, #1f3c88, #0b7285);
+    padding: 30px;
+    border-radius: 16px;
+    color: white;
+    margin-bottom: 30px;
 }
 
+/* Card layout */
 .card {
-  background:white;
-  padding:22px;
-  border-radius:14px;
-  box-shadow:0 6px 18px rgba(0,0,0,0.08);
-  margin-bottom:20px;
+    background: white;
+    padding: 22px;
+    border-radius: 14px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+    margin-bottom: 20px;
 }
 
+/* Metrics highlight */
 .metric {
-  font-size:20px;
-  font-weight:600;
-  color:#0b7285;
+    font-size: 20px;
+    font-weight: 600;
+    color: #0b7285;
 }
 
+/* Footer */
 .footer {
-  text-align:center;
-  color:#6c757d;
-  font-size:13px;
-  padding:30px;
+    text-align: center;
+    color: #6c757d;
+    font-size: 13px;
+    padding: 30px;
 }
+
 </style>
 """, unsafe_allow_html=True)
 
+
 # ==========================================================
-# SIDEBAR
+# SECTION 4 — SIDEBAR INFORMATION PANEL
 # ==========================================================
 
 st.sidebar.image("logo.png", width=120)
@@ -95,32 +141,51 @@ st.sidebar.write("• Structural bioinformatics")
 st.sidebar.write("• Batch screening")
 st.sidebar.info("For research & educational use only")
 
+
 # ==========================================================
-# SESSION STATE
+# SECTION 5 — SESSION STATE INITIALIZATION
 # ==========================================================
 
 if "pdb_text" not in st.session_state:
     st.session_state.pdb_text = None
+
 if "last_prediction" not in st.session_state:
     st.session_state.last_prediction = {}
 
+
 # ==========================================================
-# UTILITIES
+# SECTION 6 — UTILITY FUNCTIONS
 # ==========================================================
 
 def clean_sequence(seq):
+    """
+    Cleans peptide sequences by:
+    • Uppercasing
+    • Removing whitespace
+    • Removing invalid amino acids
+    """
     if not isinstance(seq, str):
         return ""
     seq = seq.upper().replace(" ", "").replace("\n", "").replace("\t", "")
     return "".join(a for a in seq if a in AA)
 
+
 # ==========================================================
-# FEATURE EXTRACTION
+# SECTION 7 — FEATURE EXTRACTION (SEQUENCE-BASED)
 # ==========================================================
 
 def physicochemical_features(seq):
+    """
+    Computes physicochemical properties using Biopython:
+    • Molecular weight
+    • pI
+    • GRAVY
+    • Instability
+    • Secondary structure fractions
+    """
     ana = ProteinAnalysis(seq)
     h, t, s = ana.secondary_structure_fraction()
+
     return {
         "Length": len(seq),
         "Molecular weight (Da)": round(ana.molecular_weight(), 2),
@@ -134,9 +199,18 @@ def physicochemical_features(seq):
         "Sheet fraction": round(s, 3),
     }
 
+
 def composition_features(seq):
+    """
+    Calculates amino acid composition groups:
+    • Hydrophobic
+    • Polar
+    • Charged
+    • Aromatic
+    """
     c = Counter(seq)
     L = len(seq)
+
     return {
         "Hydrophobic (%)": round(100 * sum(c[a] for a in "AILMFWV") / L, 1),
         "Polar (%)": round(100 * sum(c[a] for a in "STNQ") / L, 1),
@@ -144,8 +218,16 @@ def composition_features(seq):
         "Aromatic (%)": round(100 * sum(c[a] for a in "FWY") / L, 1),
     }
 
+
 def model_features(seq):
+    """
+    Converts peptide sequence into ML-compatible feature vector.
+    Includes:
+    • Global physicochemical descriptors
+    • Normalized amino acid frequencies
+    """
     ana = ProteinAnalysis(seq)
+
     f = {
         "length": len(seq),
         "mw": ana.molecular_weight(),
@@ -155,83 +237,132 @@ def model_features(seq):
         "gravy": ana.gravy(),
         "charge": ana.charge_at_pH(7.0)
     }
+
     for aa in AA:
         f[f"AA_{aa}"] = seq.count(aa) / len(seq)
+
     return f
 
+
 def build_feature_table(seqs):
+    """
+    Builds a pandas DataFrame of ML features for a list of sequences.
+    """
     return pd.DataFrame([model_features(s) for s in seqs]).fillna(0)
 
+
 # ==========================================================
-# STRUCTURE + ANALYSIS
+# SECTION 8 — STRUCTURE GENERATION & ANALYSIS
 # ==========================================================
 
 def build_peptide_pdb(seq):
+    """
+    Generates a peptide PDB structure using PeptideBuilder.
+    """
     structure = PeptideBuilder.initialize_res(seq[0])
+
     for aa in seq[1:]:
         PeptideBuilder.add_residue(structure, Geometry.geometry(aa))
+
     io = PDBIO()
     io.set_structure(structure)
     io.save("predicted_peptide.pdb")
+
     return open("predicted_peptide.pdb").read()
 
+
 def show_structure(pdb_text):
+    """
+    Displays a 3D structure using py3Dmol.
+    """
     view = py3Dmol.view(width=800, height=450)
     view.addModel(pdb_text, "pdb")
     view.setStyle({"cartoon": {"color": "spectrum"}})
     view.zoomTo()
     return view
 
+
 def ramachandran(pdb_text):
+    """
+    Computes phi-psi angles for Ramachandran plot.
+    """
     open("_tmp.pdb", "w").write(pdb_text)
     structure = PDBParser(QUIET=True).get_structure("x", "_tmp.pdb")[0]
-    pts = []
+
+    points = []
     for pp in PPBuilder().build_peptides(structure):
         for phi, psi in pp.get_phi_psi_list():
             if phi and psi:
-                pts.append((np.degrees(phi), np.degrees(psi)))
-    return pts
+                points.append((np.degrees(phi), np.degrees(psi)))
+
+    return points
+
 
 def ca_distance_map(pdb_text):
+    """
+    Computes Cα distance matrix.
+    """
     open("_tmp.pdb", "w").write(pdb_text)
     structure = PDBParser(QUIET=True).get_structure("x", "_tmp.pdb")
+
     cas = [r["CA"].get_vector() for r in structure.get_residues() if "CA" in r]
     n = len(cas)
+
     mat = np.zeros((n, n))
     for i in range(n):
         for j in range(n):
             mat[i, j] = (cas[i] - cas[j]).norm()
+
     return mat
 
+
 def ca_rmsd(pdb_text):
+    """
+    Computes Cα RMSD relative to first residue.
+    """
     open("_rmsd.pdb", "w").write(pdb_text)
     structure = PDBParser(QUIET=True).get_structure("x", "_rmsd.pdb")
+
     cas = [r["CA"].get_vector() for r in structure.get_residues() if "CA" in r]
     if len(cas) < 2:
         return None
+
     ref = cas[0]
     return np.sqrt(np.mean([(v - ref).norm()**2 for v in cas]))
 
+
 # ==========================================================
-# TRAIN MODELS
+# SECTION 9 — MODEL TRAINING
 # ==========================================================
 
 @st.cache_data
 def train_models():
+    """
+    Trains Random Forest models for:
+    • Taste classification
+    • Solubility classification
+    • Docking score regression
+    """
+
     df = pd.read_excel(DATASET_PATH)
     df.columns = df.columns.str.lower().str.strip()
+
     df["peptide"] = df["peptide"].apply(clean_sequence)
     df = df[df["peptide"].str.len() >= 2]
 
     X = build_feature_table(df["peptide"])
-    le_taste, le_sol = LabelEncoder(), LabelEncoder()
+
+    le_taste = LabelEncoder()
+    le_sol = LabelEncoder()
 
     y_taste = le_taste.fit_transform(df["taste"])
     y_sol = le_sol.fit_transform(df["solubility"])
     y_dock = df["docking score (kcal/mol)"]
 
     Xtr, Xte, yt_tr, yt_te, ys_tr, ys_te, yd_tr, yd_te = train_test_split(
-        X, y_taste, y_sol, y_dock, test_size=0.2, random_state=42
+        X, y_taste, y_sol, y_dock,
+        test_size=0.2,
+        random_state=42
     )
 
     taste_model = RandomForestClassifier(n_estimators=300)
@@ -253,179 +384,324 @@ def train_models():
 
     return X, taste_model, sol_model, dock_model, le_taste, le_sol, metrics
 
+
+# ==========================================================
+# SECTION 10 — LOAD MODELS
+# ==========================================================
+
 X_all, taste_model, sol_model, dock_model, le_taste, le_sol, metrics = train_models()
 
-# ==========================================================
-# PDF REPORT
-# ==========================================================
-
-def generate_pdf(metrics, prediction, image_paths):
-    file = "PepTastePredictor_Full_Report.pdf"
-    styles = getSampleStyleSheet()
-    doc = SimpleDocTemplate(file, pagesize=A4)
-    story = []
-
-    story.append(Paragraph("<b>PepTastePredictor</b>", styles["Title"]))
-    story.append(Spacer(1, 12))
-
-    story.append(Paragraph("<b>Model Performance</b>", styles["Heading2"]))
-    for k, v in metrics.items():
-        story.append(Paragraph(f"{k}: {round(v,4)}", styles["Normal"]))
-
-    story.append(Spacer(1, 12))
-    story.append(Paragraph("<b>Prediction Results</b>", styles["Heading2"]))
-    for k, v in prediction.items():
-        story.append(Paragraph(f"{k}: {v}", styles["Normal"]))
-
-    story.append(Spacer(1, 12))
-    story.append(Paragraph("<b>Structural Analysis</b>", styles["Heading2"]))
-    for img in image_paths:
-        if os.path.exists(img):
-            story.append(RLImage(img, width=400, height=300))
-            story.append(Spacer(1, 12))
-
-    doc.build(story)
-    return file
 
 # ==========================================================
-# UI
+# SECTION 11 — HERO HEADER
 # ==========================================================
 
 st.markdown("""
 <div class="hero">
 <h1>🧬 PepTastePredictor</h1>
-<p>End-to-end AI + structural bioinformatics peptide analysis platform</p>
+<p>
+An integrated machine learning and structural bioinformatics platform
+for peptide taste, solubility, docking, and structural analysis.
+</p>
 </div>
 """, unsafe_allow_html=True)
+# ==========================================================
+# SECTION 12 — MODE SELECTION
+# ==========================================================
+
+st.markdown("## 🔧 Prediction & Analysis Mode Selection")
 
 mode = st.radio(
-    "Select mode",
-    ["Single Peptide", "Batch Prediction", "PDB Analysis"],
+    "Choose the analysis mode",
+    [
+        "Single Peptide Prediction",
+        "Batch Peptide Prediction",
+        "PDB Upload & Structural Analysis"
+    ],
     horizontal=True
 )
 
+
 # ==========================================================
-# SINGLE PEPTIDE
+# SECTION 13 — SINGLE PEPTIDE PREDICTION MODE
 # ==========================================================
 
-if mode == "Single Peptide":
+if mode == "Single Peptide Prediction":
 
-    seq = st.text_input("Enter peptide sequence")
+    st.markdown("## 🔬 Single Peptide Prediction")
 
-    if st.button("Predict"):
+    seq = st.text_input(
+        "Enter peptide sequence (FASTA single-letter code)",
+        help="Example: AGLWFK"
+    )
 
+    if st.button("Run Prediction"):
+
+        # --------------------------------------------------
+        # Sequence cleaning & feature generation
+        # --------------------------------------------------
         seq = clean_sequence(seq)
         Xp = pd.DataFrame([model_features(seq)])
 
+        # --------------------------------------------------
+        # ML Predictions
+        # --------------------------------------------------
         taste = le_taste.inverse_transform(taste_model.predict(Xp))[0]
         sol = le_sol.inverse_transform(sol_model.predict(Xp))[0]
         dock = dock_model.predict(Xp)[0]
 
         st.session_state.last_prediction = {
             "Sequence": seq,
-            "Taste": taste,
-            "Solubility": sol,
-            "Docking score": round(dock, 2)
+            "Predicted taste": taste,
+            "Predicted solubility": sol,
+            "Docking score (kcal/mol)": round(dock, 3)
         }
 
-        st.markdown(f"""
+        # --------------------------------------------------
+        # Display prediction summary
+        # --------------------------------------------------
+        st.markdown("""
         <div class="card">
-        <div class="metric">Taste: {taste}</div>
-        <div class="metric">Solubility: {sol}</div>
-        <div class="metric">Docking score: {dock:.2f}</div>
+            <div class="metric">Taste Prediction</div>
+            <p>{}</p>
+            <div class="metric">Solubility Prediction</div>
+            <p>{}</p>
+            <div class="metric">Docking Score</div>
+            <p>{:.3f} kcal/mol</p>
         </div>
-        """, unsafe_allow_html=True)
+        """.format(taste, sol, dock), unsafe_allow_html=True)
 
+        # --------------------------------------------------
+        # Physicochemical properties
+        # --------------------------------------------------
+        st.markdown("### 📌 Physicochemical Properties")
         for k, v in physicochemical_features(seq).items():
             st.write(f"{k}: {v}")
 
+        # --------------------------------------------------
+        # Composition analysis
+        # --------------------------------------------------
+        st.markdown("### 🧪 Amino Acid Composition Summary")
         for k, v in composition_features(seq).items():
             st.write(f"{k}: {v}")
 
-        pdb = build_peptide_pdb(seq)
-        st.session_state.pdb_text = pdb
+        # --------------------------------------------------
+        # Structure generation
+        # --------------------------------------------------
+        st.markdown("## 🧬 Predicted 3D Peptide Structure")
 
-        st.download_button("Download PDB", pdb, "predicted_peptide.pdb")
+        pdb_text = build_peptide_pdb(seq)
+        st.session_state.pdb_text = pdb_text
 
-        st.components.v1.html(show_structure(pdb)._make_html(), height=500)
+        st.download_button(
+            "⬇️ Download Predicted PDB",
+            pdb_text,
+            file_name="predicted_peptide.pdb"
+        )
 
-        rmsd = ca_rmsd(pdb)
-        st.write(f"Cα RMSD: {round(rmsd,3)} Å")
+        st.components.v1.html(
+            show_structure(pdb_text)._make_html(),
+            height=520
+        )
 
-        # Plots
-        phi, psi = zip(*ramachandran(pdb))
-        fig1, ax1 = plt.subplots()
-        ax1.scatter(phi, psi)
-        fig1.savefig("rama.png")
-        st.pyplot(fig1)
+        # --------------------------------------------------
+        # RMSD analysis
+        # --------------------------------------------------
+        rmsd_val = ca_rmsd(pdb_text)
+        if rmsd_val:
+            st.success(f"Cα RMSD (structural deviation): {rmsd_val:.3f} Å")
 
-        fig2, ax2 = plt.subplots(figsize=(5,5))
-        sns.heatmap(ca_distance_map(pdb), ax=ax2)
-        fig2.savefig("dist.png")
-        st.pyplot(fig2)
+        # --------------------------------------------------
+        # Ramachandran plot
+        # --------------------------------------------------
+        st.markdown("### 📐 Ramachandran Plot")
 
-        # PDF
-        pdf = generate_pdf(metrics, st.session_state.last_prediction, ["rama.png", "dist.png"])
-        st.download_button("Download FULL PDF REPORT", open(pdf, "rb"), pdf)
+        phi_psi = ramachandran(pdb_text)
+        if phi_psi:
+            phi, psi = zip(*phi_psi)
+            fig_rama, ax_rama = plt.subplots()
+            ax_rama.scatter(phi, psi, s=20)
+            ax_rama.set_xlabel("Phi (°)")
+            ax_rama.set_ylabel("Psi (°)")
+            ax_rama.set_title("Ramachandran Plot")
+            fig_rama.savefig("rama.png")
+            st.pyplot(fig_rama)
+
+        # --------------------------------------------------
+        # Cα distance map
+        # --------------------------------------------------
+        st.markdown("### 🗺️ Cα Distance Map")
+
+        dist_map = ca_distance_map(pdb_text)
+        fig_dist, ax_dist = plt.subplots(figsize=(5, 5))
+        sns.heatmap(dist_map, cmap="viridis", ax=ax_dist)
+        ax_dist.set_title("Cα Distance Heatmap")
+        fig_dist.savefig("dist.png")
+        st.pyplot(fig_dist)
+
+        # --------------------------------------------------
+        # PDF report generation
+        # --------------------------------------------------
+        st.markdown("## 📄 Full PDF Report")
+
+        pdf_path = generate_pdf(
+            metrics,
+            st.session_state.last_prediction,
+            ["rama.png", "dist.png"]
+        )
+
+        with open(pdf_path, "rb") as f:
+            st.download_button(
+                "📥 Download Complete PDF Report",
+                f,
+                file_name="PepTastePredictor_Full_Report.pdf",
+                mime="application/pdf"
+            )
+
 
 # ==========================================================
-# BATCH MODE
+# SECTION 14 — BATCH PEPTIDE PREDICTION MODE
 # ==========================================================
 
-if mode == "Batch Prediction":
+if mode == "Batch Peptide Prediction":
 
-    batch = st.file_uploader("Upload CSV with peptide column", type=["csv"])
+    st.markdown("## 📦 Batch Peptide Prediction")
 
-    if batch:
-        df = pd.read_csv(batch)
-        df["peptide"] = df["peptide"].apply(clean_sequence)
-        Xb = build_feature_table(df["peptide"])
+    batch_file = st.file_uploader(
+        "Upload CSV file containing a 'peptide' column",
+        type=["csv"]
+    )
 
-        df["Taste"] = le_taste.inverse_transform(taste_model.predict(Xb))
-        df["Solubility"] = le_sol.inverse_transform(sol_model.predict(Xb))
-        df["Docking"] = dock_model.predict(Xb)
+    if batch_file is not None:
 
-        st.dataframe(df)
-        st.download_button("Download Batch Results", df.to_csv(index=False), "batch_results.csv")
+        batch_df = pd.read_csv(batch_file)
+
+        if "peptide" not in batch_df.columns:
+            st.error("CSV file must contain a column named 'peptide'")
+        else:
+            batch_df["peptide"] = batch_df["peptide"].apply(clean_sequence)
+
+            X_batch = build_feature_table(batch_df["peptide"])
+
+            batch_df["Predicted Taste"] = le_taste.inverse_transform(
+                taste_model.predict(X_batch)
+            )
+            batch_df["Predicted Solubility"] = le_sol.inverse_transform(
+                sol_model.predict(X_batch)
+            )
+            batch_df["Predicted Docking Score"] = dock_model.predict(X_batch)
+
+            st.markdown("### ✅ Batch Prediction Results")
+            st.dataframe(batch_df)
+
+            st.download_button(
+                "⬇️ Download Batch Results",
+                batch_df.to_csv(index=False),
+                file_name="batch_predictions.csv"
+            )
+
 
 # ==========================================================
-# PDB ANALYSIS MODE
+# SECTION 15 — PDB UPLOAD & STRUCTURAL ANALYSIS MODE
 # ==========================================================
 
-if mode == "PDB Analysis":
+if mode == "PDB Upload & Structural Analysis":
 
-    up = st.file_uploader("Upload PDB file", type=["pdb"])
+    st.markdown("## 🧩 Upload & Analyze PDB Structure")
 
-    if up:
-        pdb = up.read().decode()
-        st.components.v1.html(show_structure(pdb)._make_html(), height=500)
+    uploaded_pdb = st.file_uploader(
+        "Upload a PDB file for structural analysis",
+        type=["pdb"]
+    )
 
-        rmsd = ca_rmsd(pdb)
-        st.write(f"Cα RMSD: {round(rmsd,3)} Å")
+    if uploaded_pdb is not None:
+        pdb_text = uploaded_pdb.read().decode()
+        st.session_state.pdb_text = pdb_text
 
-        phi, psi = zip(*ramachandran(pdb))
-        fig, ax = plt.subplots()
-        ax.scatter(phi, psi)
+    if st.session_state.pdb_text:
+
+        # --------------------------------------------------
+        # 3D structure visualization
+        # --------------------------------------------------
+        st.markdown("### 🧬 3D Structure Viewer")
+
+        st.components.v1.html(
+            show_structure(st.session_state.pdb_text)._make_html(),
+            height=520
+        )
+
+        # --------------------------------------------------
+        # RMSD
+        # --------------------------------------------------
+        rmsd_val = ca_rmsd(st.session_state.pdb_text)
+        if rmsd_val:
+            st.success(f"Cα RMSD (structural deviation): {rmsd_val:.3f} Å")
+
+        # --------------------------------------------------
+        # Ramachandran plot
+        # --------------------------------------------------
+        st.markdown("### 📐 Ramachandran Plot")
+
+        phi_psi = ramachandran(st.session_state.pdb_text)
+        if phi_psi:
+            phi, psi = zip(*phi_psi)
+            fig, ax = plt.subplots()
+            ax.scatter(phi, psi)
+            ax.set_xlabel("Phi (°)")
+            ax.set_ylabel("Psi (°)")
+            ax.set_title("Ramachandran Plot")
+            st.pyplot(fig)
+
+        # --------------------------------------------------
+        # Cα distance map
+        # --------------------------------------------------
+        st.markdown("### 🗺️ Cα Distance Map")
+
+        fig, ax = plt.subplots(figsize=(5, 5))
+        sns.heatmap(
+            ca_distance_map(st.session_state.pdb_text),
+            cmap="viridis",
+            ax=ax
+        )
+        ax.set_title("Cα Distance Heatmap")
         st.pyplot(fig)
 
-        fig, ax = plt.subplots(figsize=(5,5))
-        sns.heatmap(ca_distance_map(pdb), ax=ax)
-        st.pyplot(fig)
 
 # ==========================================================
-# MODEL METRICS
+# SECTION 16 — MODEL PERFORMANCE ANALYTICS
 # ==========================================================
 
 st.markdown("## 📊 Model Performance Metrics")
+
 for k, v in metrics.items():
-    st.write(f"{k}: {round(v,4)}")
+    st.write(f"{k}: {round(v, 4)}")
+
 
 # ==========================================================
-# FOOTER
+# SECTION 17 — DATASET FEATURE SPACE (PCA)
+# ==========================================================
+
+st.markdown("## 🧠 Dataset Feature Space (PCA Projection)")
+
+coords = PCA(2).fit_transform(X_all)
+
+fig_pca, ax_pca = plt.subplots()
+ax_pca.scatter(coords[:, 0], coords[:, 1], alpha=0.6)
+ax_pca.set_xlabel("PC1")
+ax_pca.set_ylabel("PC2")
+ax_pca.set_title("PCA of Peptide Feature Space")
+
+st.pyplot(fig_pca)
+
+
+# ==========================================================
+# SECTION 18 — FOOTER
 # ==========================================================
 
 st.markdown("""
 <div class="footer">
-© 2025 PepTastePredictor • AI + Structural Bioinformatics
+© 2025 <b>PepTastePredictor</b><br>
+An AI + Structural Bioinformatics platform for peptide analysis<br>
+For academic, educational, and research use
 </div>
 """, unsafe_allow_html=True)
