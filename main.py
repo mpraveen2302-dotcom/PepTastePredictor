@@ -323,22 +323,20 @@ if uploaded:
 
 
   if st.session_state.pdb_text is not None:
+      st.markdown("### Ramachandran Plot")
+      phi_psi = ramachandran_from_pdb(st.session_state.pdb_text)
 
-    st.markdown("### Ramachandran Plot")
-
-    phi_psi = ramachandran_from_pdb(st.session_state.pdb_text)
-
-    if len(phi_psi) == 0:
-        st.warning("Ramachandran plot not available (peptide too short or incomplete backbone).")
-    else:
-        phi, psi = zip(*phi_psi)
-        fig, ax = plt.subplots()
-        ax.scatter(phi, psi, s=20)
-        ax.set_xlim(-180, 180)
-        ax.set_ylim(-180, 180)
-        ax.set_xlabel("Phi (°)")
-        ax.set_ylabel("Psi (°)")
-        st.pyplot(fig)
+      if len(phi_psi) == 0:
+          st.warning("Ramachandran plot not available (peptide too short or incomplete backbone).")
+      else:
+          phi, psi = zip(*phi_psi)
+          fig, ax = plt.subplots()
+          ax.scatter(phi, psi, s=20)
+          ax.set_xlim(-180, 180)
+          ax.set_ylim(-180, 180)
+          ax.set_xlabel("Phi (°)")
+          ax.set_ylabel("Psi (°)")
+          st.pyplot(fig)
 
     st.markdown("### Cα Distance Map")
 
