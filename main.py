@@ -1,5 +1,5 @@
 # ==========================================================
-# PepTastePredictor — FINAL PUBLICATION VERSION (STABLE)
+# PepTastePredictor — FINAL PUBLICATION VERSION (FRONTEND POLISHED)
 # ==========================================================
 
 import streamlit as st
@@ -31,43 +31,55 @@ DATASET_PATH = "AIML (4).xlsx"
 AA = "ACDEFGHIKLMNPQRSTVWY"
 
 # ==========================================================
-# UI STYLING (SAFE)
+# FRONTEND STYLING (UI ONLY)
 # ==========================================================
 
 st.markdown("""
 <style>
 .stApp { background-color: #f6f8fc; }
+
 h1, h2, h3 { color: #1f3c88; }
 
 .card {
     background: white;
-    padding: 20px;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-    margin-bottom: 16px;
+    padding: 22px;
+    border-radius: 14px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+    margin-bottom: 20px;
 }
 
-.metric { font-size: 18px; font-weight: 600; color: #0b7285; }
+.metric {
+    font-size: 20px;
+    font-weight: 600;
+    color: #0b7285;
+}
+
+.section {
+    margin-top: 30px;
+}
 
 .footer {
     text-align: center;
     color: #6c757d;
     font-size: 13px;
-    padding: 20px;
+    padding: 30px;
 }
 </style>
 """, unsafe_allow_html=True)
 
 # ==========================================================
-# SIDEBAR
+# SIDEBAR (INFO ONLY)
 # ==========================================================
 
 st.sidebar.title("🧬 PepTastePredictor")
-st.sidebar.write("AI-powered peptide taste & solubility prediction")
-st.sidebar.write("• Single prediction")
-st.sidebar.write("• Batch prediction")
-st.sidebar.write("• 3D structure analysis")
-st.sidebar.write("• Academic & research use")
+st.sidebar.write("AI-powered peptide analysis platform")
+st.sidebar.write("• Taste prediction")
+st.sidebar.write("• Solubility prediction")
+st.sidebar.write("• Docking score estimation")
+st.sidebar.write("• 3D structural analysis")
+st.sidebar.write("• Batch processing")
+st.sidebar.markdown("---")
+st.sidebar.info("Built for research, iGEM & academic use")
 
 # ==========================================================
 # SESSION STATE
@@ -227,14 +239,14 @@ st.markdown("# 🧬 PepTastePredictor")
 st.write("AI-powered peptide taste, solubility & docking prediction with structural insights")
 
 # ==========================================================
-# SINGLE PREDICTION
+# SINGLE PEPTIDE PREDICTION
 # ==========================================================
 
 st.markdown("## 🔬 Single Peptide Prediction")
 
 seq = st.text_input("Enter peptide sequence", key="single_seq")
 
-if st.button("Predict", key="single_predict"):
+if st.button("Predict", key="predict_btn"):
     seq = clean_sequence(seq)
     Xp = build_feature_table([seq])
 
@@ -250,15 +262,12 @@ if st.button("Predict", key="single_predict"):
     </div>
     """, unsafe_allow_html=True)
 
-    feats = physicochemical_features(seq)
-    comp = composition_features(seq)
-
     st.write("### Physicochemical properties")
-    for k, v in feats.items():
+    for k, v in physicochemical_features(seq).items():
         st.write(f"{k}: {v}")
 
     st.write("### Composition summary")
-    for k, v in comp.items():
+    for k, v in composition_features(seq).items():
         st.write(f"{k}: {v}")
 
     st.session_state.pdb_text = build_peptide_pdb(seq)
@@ -282,15 +291,15 @@ if st.session_state.pdb_text:
     st.write("### Ramachandran plot")
     phi_psi = ramachandran_from_pdb(st.session_state.pdb_text)
 
-    if len(phi_psi) == 0:
-        st.warning("Ramachandran plot not available for this structure.")
-    else:
+    if phi_psi:
         phi, psi = zip(*phi_psi)
         fig, ax = plt.subplots()
         ax.scatter(phi, psi, s=20)
         ax.set_xlim(-180, 180)
         ax.set_ylim(-180, 180)
         st.pyplot(fig)
+    else:
+        st.warning("Ramachandran plot not available for this structure.")
 
     st.write("### Cα distance map")
     fig, ax = plt.subplots(figsize=(5,5))
@@ -345,6 +354,7 @@ st.pyplot(fig)
 
 st.markdown("""
 <div class="footer">
-© 2025 PepTastePredictor • Built for research & education
+© 2025 <b>PepTastePredictor</b> • AI-driven peptide analysis platform  
+Built for research, education & innovation
 </div>
 """, unsafe_allow_html=True)
