@@ -684,9 +684,9 @@ if mode == "PDB Upload & Structural Analysis":
     )
 
     if uploaded_pdb is not None:
-    pdb_text = uploaded_pdb.read().decode()
-    st.session_state.pdb_text = pdb_text
-    st.session_state.show_analytics = True
+        pdb_text = uploaded_pdb.read().decode()
+        st.session_state.pdb_text = pdb_text
+        st.session_state.show_analytics = True
 
 
         # --------------------------------------------------
