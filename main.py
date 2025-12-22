@@ -1,5 +1,5 @@
 # ==========================================================
-# PepTastePredictor — FINAL PUBLICATION VERSION (UPGRADED)
+# PepTastePredictor — FINAL PUBLICATION VERSION (STABLE)
 # ==========================================================
 
 import streamlit as st
@@ -10,7 +10,6 @@ import seaborn as sns
 import py3Dmol
 
 from collections import Counter
-
 from Bio.SeqUtils.ProtParam import ProteinAnalysis
 from Bio.PDB import PDBIO, PDBParser, PPBuilder
 import PeptideBuilder
@@ -30,79 +29,52 @@ st.set_page_config(page_title="PepTastePredictor", layout="wide")
 
 DATASET_PATH = "AIML (4).xlsx"
 AA = "ACDEFGHIKLMNPQRSTVWY"
-# ==========================================================
-# SESSION STATE INITIALIZATION (SAFE)
-# ==========================================================
-
-if "pdb_text" not in st.session_state:
-    st.session_state.pdb_text = None
-
 
 # ==========================================================
-# FRONTEND STYLING (UI ONLY — SAFE)
+# UI STYLING (SAFE)
 # ==========================================================
 
 st.markdown("""
 <style>
 .stApp { background-color: #f6f8fc; }
-
 h1, h2, h3 { color: #1f3c88; }
 
 .card {
     background: white;
-    padding: 22px;
-    border-radius: 14px;
-    box-shadow: 0 6px 18px rgba(0,0,0,0.08);
-    margin-bottom: 20px;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    margin-bottom: 16px;
 }
 
-.metric {
-    font-size: 20px;
-    font-weight: 600;
-    color: #0b7285;
-    margin-bottom: 6px;
-}
-
-div.stButton > button {
-    background-color: #1f3c88;
-    color: white;
-    border-radius: 8px;
-    padding: 0.6em 1.6em;
-    border: none;
-}
+.metric { font-size: 18px; font-weight: 600; color: #0b7285; }
 
 .footer {
     text-align: center;
     color: #6c757d;
     font-size: 13px;
-    padding: 24px;
-    margin-top: 40px;
+    padding: 20px;
 }
 </style>
 """, unsafe_allow_html=True)
 
 # ==========================================================
-# SIDEBAR (UI ONLY)
+# SIDEBAR
 # ==========================================================
 
 st.sidebar.title("🧬 PepTastePredictor")
-st.sidebar.markdown("""
-**AI-powered peptide analysis platform**
+st.sidebar.write("AI-powered peptide taste & solubility prediction")
+st.sidebar.write("• Single prediction")
+st.sidebar.write("• Batch prediction")
+st.sidebar.write("• 3D structure analysis")
+st.sidebar.write("• Academic & research use")
 
-• Taste prediction  
-• Solubility prediction  
-• Docking score estimation  
-• 3D structure visualization  
-• Batch processing  
+# ==========================================================
+# SESSION STATE
+# ==========================================================
 
-**Designed for**
-- Research
-- iGEM
-- Thesis
-- Drug discovery
-""")
-st.sidebar.markdown("---")
-st.sidebar.info("Academic & research use")
+if "pdb_text" not in st.session_state:
+    st.session_state.pdb_text = None
 
 # ==========================================================
 # UTILITIES
@@ -112,7 +84,7 @@ def clean_sequence(seq):
     if not isinstance(seq, str):
         return ""
     seq = seq.upper().replace(" ", "").replace("\n", "").replace("\t", "")
-    return "".join([a for a in seq if a in AA])
+    return "".join(a for a in seq if a in AA)
 
 # ==========================================================
 # FEATURE EXTRACTION
@@ -163,56 +135,46 @@ def build_feature_table(seqs):
     return pd.DataFrame([model_features(s) for s in seqs]).fillna(0)
 
 # ==========================================================
-# PDB GENERATION + VIEWER
+# PDB FUNCTIONS
 # ==========================================================
 
 def build_peptide_pdb(seq):
     structure = PeptideBuilder.initialize_res(seq[0])
     for aa in seq[1:]:
-        geom = Geometry.geometry(aa)
-        PeptideBuilder.add_residue(structure, geom)
+        PeptideBuilder.add_residue(structure, Geometry.geometry(aa))
     io = PDBIO()
     io.set_structure(structure)
     io.save("peptide.pdb")
-    return "peptide.pdb"
+    return open("peptide.pdb").read()
 
 def show_structure(pdb_text):
-    view = py3Dmol.view(width=800, height=500)
+    view = py3Dmol.view(width=800, height=450)
     view.addModel(pdb_text, "pdb")
-    view.setStyle({"cartoon": {"color": "spectrum"}, "stick": {}})
+    view.setStyle({"cartoon": {"color": "spectrum"}})
     view.setBackgroundColor("white")
     view.zoomTo()
     return view
 
-# ==========================================================
-# STRUCTURE ANALYSIS
-# ==========================================================
-
 def ramachandran_from_pdb(pdb_text):
     open("_tmp.pdb", "w").write(pdb_text)
-    parser = PDBParser(QUIET=True)
-    structure = parser.get_structure("pep", "_tmp.pdb")
-    model = structure[0]
-
-    phi_psi = []
-    ppb = PPBuilder()
-    for pp in ppb.build_peptides(model):
+    structure = PDBParser(QUIET=True).get_structure("x", "_tmp.pdb")[0]
+    out = []
+    for pp in PPBuilder().build_peptides(structure):
         for phi, psi in pp.get_phi_psi_list():
             if phi and psi:
-                phi_psi.append((np.degrees(phi), np.degrees(psi)))
-    return phi_psi
+                out.append((np.degrees(phi), np.degrees(psi)))
+    return out
 
 def ca_distance_map(pdb_text):
     open("_tmp.pdb", "w").write(pdb_text)
-    parser = PDBParser(QUIET=True)
-    structure = parser.get_structure("pep", "_tmp.pdb")
-    cas = [res["CA"].get_vector() for res in structure.get_residues() if "CA" in res]
+    structure = PDBParser(QUIET=True).get_structure("x", "_tmp.pdb")
+    cas = [r["CA"].get_vector() for r in structure.get_residues() if "CA" in r]
     n = len(cas)
-    dist = np.zeros((n, n))
+    mat = np.zeros((n, n))
     for i in range(n):
         for j in range(n):
-            dist[i, j] = (cas[i] - cas[j]).norm()
-    return dist
+            mat[i, j] = (cas[i] - cas[j]).norm()
+    return mat
 
 # ==========================================================
 # TRAIN MODELS (UNCHANGED)
@@ -226,8 +188,7 @@ def train_models():
     df = df[df["peptide"].str.len() >= 2]
 
     X = build_feature_table(df["peptide"])
-    le_taste = LabelEncoder()
-    le_sol = LabelEncoder()
+    le_taste, le_sol = LabelEncoder(), LabelEncoder()
 
     y_taste = le_taste.fit_transform(df["taste"])
     y_sol = le_sol.fit_transform(df["solubility"])
@@ -246,12 +207,12 @@ def train_models():
     dock_model.fit(Xtr, yd_tr)
 
     metrics = {
-        "Taste Accuracy": accuracy_score(yt_te, taste_model.predict(Xte)),
-        "Taste F1": f1_score(yt_te, taste_model.predict(Xte), average="weighted"),
-        "Solubility Accuracy": accuracy_score(ys_te, sol_model.predict(Xte)),
-        "Solubility F1": f1_score(ys_te, sol_model.predict(Xte), average="weighted"),
+        "Taste accuracy": accuracy_score(yt_te, taste_model.predict(Xte)),
+        "Taste F1 score": f1_score(yt_te, taste_model.predict(Xte), average="weighted"),
+        "Solubility accuracy": accuracy_score(ys_te, sol_model.predict(Xte)),
+        "Solubility F1 score": f1_score(ys_te, sol_model.predict(Xte), average="weighted"),
         "Docking RMSE": np.sqrt(mean_squared_error(yd_te, dock_model.predict(Xte))),
-        "Docking R2": r2_score(yd_te, dock_model.predict(Xte))
+        "Docking R²": r2_score(yd_te, dock_model.predict(Xte))
     }
 
     return df, X, taste_model, sol_model, dock_model, le_taste, le_sol, metrics
@@ -262,29 +223,19 @@ df, X_all, taste_model, sol_model, dock_model, le_taste, le_sol, metrics = train
 # HEADER
 # ==========================================================
 
-col1, col2 = st.columns([1,4])
-with col1:
-    st.image("logo.png", width=120)  # optional
-with col2:
-    st.markdown("""
-    <h1>PepTastePredictor</h1>
-    <p style="color:#555;">
-    AI-powered peptide taste, solubility & docking prediction with structural insights
-    </p>
-    """, unsafe_allow_html=True)
+st.markdown("# 🧬 PepTastePredictor")
+st.write("AI-powered peptide taste, solubility & docking prediction with structural insights")
 
 # ==========================================================
-# SINGLE PEPTIDE PREDICTION
+# SINGLE PREDICTION
 # ==========================================================
 
 st.markdown("## 🔬 Single Peptide Prediction")
 
-seq = st.text_input("Enter peptide sequence")
+seq = st.text_input("Enter peptide sequence", key="single_seq")
 
-if st.button("Predict"):
+if st.button("Predict", key="single_predict"):
     seq = clean_sequence(seq)
-    feats = physicochemical_features(seq)
-    comp = composition_features(seq)
     Xp = build_feature_table([seq])
 
     taste = le_taste.inverse_transform(taste_model.predict(Xp))[0]
@@ -299,12 +250,19 @@ if st.button("Predict"):
     </div>
     """, unsafe_allow_html=True)
 
-    st.json(feats)
-    st.json(comp)
+    feats = physicochemical_features(seq)
+    comp = composition_features(seq)
 
-    pdb_text = open(build_peptide_pdb(seq)).read()
-    st.download_button("Download PDB", pdb_text, "peptide.pdb")
-    st.components.v1.html(show_structure(pdb_text)._make_html(), height=520)
+    st.write("### Physicochemical properties")
+    for k, v in feats.items():
+        st.write(f"{k}: {v}")
+
+    st.write("### Composition summary")
+    for k, v in comp.items():
+        st.write(f"{k}: {v}")
+
+    st.session_state.pdb_text = build_peptide_pdb(seq)
+    st.components.v1.html(show_structure(st.session_state.pdb_text)._make_html(), height=500)
 
 # ==========================================================
 # PDB UPLOAD + ANALYSIS
@@ -312,58 +270,32 @@ if st.button("Predict"):
 
 st.markdown("## 🧩 Upload & Analyze PDB")
 
-uploaded = st.file_uploader("Upload PDB file", type=["pdb"])
-if uploaded:
-    st.session_state.pdb_text = open(build_peptide_pdb(seq)).read()
-    st.components.v1.html(show_structure(pdb_text)._make_html(), height=520)
-    st.components.v1.html(
-    show_structure(st.session_state.pdb_text)._make_html(),
-    height=520
-)
-# ==========================================================
-# STRUCTURE ANALYSIS (SAFE, STATE-AWARE)
-# ==========================================================
+uploaded_pdb = st.file_uploader("Upload PDB file", type=["pdb"], key="pdb_upload")
 
-if "pdb_text" not in st.session_state:
-    st.session_state.pdb_text = None
+if uploaded_pdb:
+    st.session_state.pdb_text = uploaded_pdb.read().decode()
 
-uploaded = st.file_uploader("Upload PDB file", type=["pdb"])
+if st.session_state.pdb_text:
 
-if uploaded:
-    st.session_state.pdb_text = uploaded.read().decode()
+    st.components.v1.html(show_structure(st.session_state.pdb_text)._make_html(), height=500)
 
-if st.session_state.pdb_text is not None:
-
-    st.components.v1.html(
-        show_structure(st.session_state.pdb_text)._make_html(),
-        height=520
-    )
-
-    st.markdown("### Ramachandran Plot")
-
+    st.write("### Ramachandran plot")
     phi_psi = ramachandran_from_pdb(st.session_state.pdb_text)
 
     if len(phi_psi) == 0:
-        st.warning("Ramachandran plot not available (peptide too short or backbone incomplete).")
+        st.warning("Ramachandran plot not available for this structure.")
     else:
         phi, psi = zip(*phi_psi)
         fig, ax = plt.subplots()
         ax.scatter(phi, psi, s=20)
         ax.set_xlim(-180, 180)
         ax.set_ylim(-180, 180)
-        ax.set_xlabel("Phi (°)")
-        ax.set_ylabel("Psi (°)")
         st.pyplot(fig)
 
-    st.markdown("### Cα Distance Map")
-
-    dist = ca_distance_map(st.session_state.pdb_text)
+    st.write("### Cα distance map")
     fig, ax = plt.subplots(figsize=(5,5))
-    sns.heatmap(dist, cmap="viridis", ax=ax)
+    sns.heatmap(ca_distance_map(st.session_state.pdb_text), cmap="viridis", ax=ax)
     st.pyplot(fig)
-
-
-
 
 # ==========================================================
 # BATCH PREDICTION
@@ -371,24 +303,27 @@ if st.session_state.pdb_text is not None:
 
 st.markdown("## 📦 Batch Prediction")
 
-batch_file = st.file_uploader("Upload CSV file with a 'peptide' column", type=["csv"])
-if batch_file is not None:
+batch_file = st.file_uploader("Upload CSV with 'peptide' column", type=["csv"], key="batch_upload")
+
+if batch_file:
     batch_df = pd.read_csv(batch_file)
 
     if "peptide" not in batch_df.columns:
         st.error("CSV must contain a column named 'peptide'")
     else:
         batch_df["peptide"] = batch_df["peptide"].apply(clean_sequence)
-        X_batch = build_feature_table(batch_df["peptide"])
+        Xb = build_feature_table(batch_df["peptide"])
 
-        batch_df["Predicted Taste"] = le_taste.inverse_transform(taste_model.predict(X_batch))
-        batch_df["Predicted Solubility"] = le_sol.inverse_transform(sol_model.predict(X_batch))
-        batch_df["Predicted Docking Score"] = dock_model.predict(X_batch)
+        batch_df["Predicted Taste"] = le_taste.inverse_transform(taste_model.predict(Xb))
+        batch_df["Predicted Solubility"] = le_sol.inverse_transform(sol_model.predict(Xb))
+        batch_df["Predicted Docking Score"] = dock_model.predict(Xb)
 
         st.dataframe(batch_df)
-        st.download_button("Download Batch Predictions",
-                           batch_df.to_csv(index=False),
-                           "batch_predictions.csv")
+        st.download_button(
+            "Download batch predictions",
+            batch_df.to_csv(index=False),
+            "batch_predictions.csv"
+        )
 
 # ==========================================================
 # ANALYTICS
@@ -396,16 +331,13 @@ if batch_file is not None:
 
 st.markdown("## 📊 Model Analytics")
 
-for k,v in metrics.items():
-    st.write(f"- **{k}:** {round(v,3)}")
+for k, v in metrics.items():
+    st.write(f"{k}: {round(v, 3)}")
 
 coords = PCA(2).fit_transform(X_all)
 fig, ax = plt.subplots()
-ax.scatter(coords[:,0], coords[:,1])
+ax.scatter(coords[:, 0], coords[:, 1])
 st.pyplot(fig)
-
-st.markdown("### AlphaFold / ColabFold")
-st.markdown("https://colab.research.google.com/github/sokrypton/ColabFold")
 
 # ==========================================================
 # FOOTER
@@ -413,7 +345,6 @@ st.markdown("https://colab.research.google.com/github/sokrypton/ColabFold")
 
 st.markdown("""
 <div class="footer">
-© 2025 <b>PepTastePredictor</b> • AI-driven peptide analysis platform  
-Built for research, education & innovation
+© 2025 PepTastePredictor • Built for research & education
 </div>
 """, unsafe_allow_html=True)
