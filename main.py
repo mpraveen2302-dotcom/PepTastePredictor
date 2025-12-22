@@ -1,5 +1,5 @@
 # ==========================================================
-# PepTastePredictor — FINAL PUBLICATION VERSION (UPGRADED)
+# PepTastePredictor — FINAL PUBLICATION VERSION (UPGRADED++)
 # ==========================================================
 
 import streamlit as st
@@ -10,7 +10,6 @@ import seaborn as sns
 import py3Dmol
 
 from collections import Counter
-from itertools import product
 
 from Bio.SeqUtils.ProtParam import ProteinAnalysis
 from Bio.PDB import PDBIO, PDBParser, PPBuilder
@@ -20,7 +19,11 @@ from PeptideBuilder import Geometry
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
-from sklearn.metrics import accuracy_score, f1_score, mean_squared_error, r2_score
+from sklearn.metrics import (
+    accuracy_score, f1_score,
+    mean_squared_error, r2_score,
+    confusion_matrix
+)
 from sklearn.decomposition import PCA
 
 # ==========================================================
@@ -113,51 +116,34 @@ def show_structure(pdb_text):
     return view
 
 # ==========================================================
-# STRUCTURE ANALYSIS (NEW)
+# STRUCTURE ANALYSIS
 # ==========================================================
 
 def ramachandran_from_pdb(pdb_text):
-    with open("_tmp.pdb", "w") as f:
-        f.write(pdb_text)
-
+    open("_tmp.pdb", "w").write(pdb_text)
     parser = PDBParser(QUIET=True)
-    structure = parser.get_structure("pep", "_tmp.pdb")
+    structure = parser.get_structure("p", "_tmp.pdb")
     model = structure[0]
-
-    phi_psi = []
     ppb = PPBuilder()
+
+    out = []
     for pp in ppb.build_peptides(model):
         for phi, psi in pp.get_phi_psi_list():
             if phi and psi:
-                phi_psi.append((np.degrees(phi), np.degrees(psi)))
-    return phi_psi
+                out.append((np.degrees(phi), np.degrees(psi)))
+    return out
 
 def ca_distance_map(pdb_text):
-    with open("_tmp.pdb", "w") as f:
-        f.write(pdb_text)
-
+    open("_tmp.pdb", "w").write(pdb_text)
     parser = PDBParser(QUIET=True)
-    structure = parser.get_structure("pep", "_tmp.pdb")
-    cas = [res["CA"].get_vector() for res in structure.get_residues() if "CA" in res]
-
+    structure = parser.get_structure("p", "_tmp.pdb")
+    cas = [r["CA"].get_vector() for r in structure.get_residues() if "CA" in r]
     n = len(cas)
-    dist = np.zeros((n, n))
+    mat = np.zeros((n, n))
     for i in range(n):
         for j in range(n):
-            dist[i, j] = (cas[i] - cas[j]).norm()
-    return dist
-
-def per_residue_properties(seq):
-    hydro = {
-        'A':1.8,'C':2.5,'D':-3.5,'E':-3.5,'F':2.8,'G':-0.4,'H':-3.2,
-        'I':4.5,'K':-3.9,'L':3.8,'M':1.9,'N':-3.5,'P':-1.6,
-        'Q':-3.5,'R':-4.5,'S':-0.8,'T':-0.7,'V':4.2,'W':-0.9,'Y':-1.3
-    }
-    charge = {'D':-1,'E':-1,'K':1,'R':1,'H':0.1}
-    return (
-        [hydro.get(a,0) for a in seq],
-        [charge.get(a,0) for a in seq]
-    )
+            mat[i, j] = (cas[i] - cas[j]).norm()
+    return mat
 
 # ==========================================================
 # TRAIN MODELS
@@ -192,9 +178,7 @@ def train_models():
 
     metrics = {
         "Taste Accuracy": accuracy_score(yt_te, taste_model.predict(Xte)),
-        "Taste F1": f1_score(yt_te, taste_model.predict(Xte), average="weighted"),
         "Solubility Accuracy": accuracy_score(ys_te, sol_model.predict(Xte)),
-        "Solubility F1": f1_score(ys_te, sol_model.predict(Xte), average="weighted"),
         "Docking RMSE": np.sqrt(mean_squared_error(yd_te, dock_model.predict(Xte))),
         "Docking R2": r2_score(yd_te, dock_model.predict(Xte))
     }
@@ -204,7 +188,7 @@ def train_models():
 df, X_all, taste_model, sol_model, dock_model, le_taste, le_sol, metrics = train_models()
 
 # ==========================================================
-# UI
+# UI — SINGLE PREDICTION
 # ==========================================================
 
 st.title("🧬 PepTastePredictor")
@@ -213,69 +197,83 @@ seq = st.text_input("Enter peptide sequence")
 
 if st.button("Predict"):
     seq = clean_sequence(seq)
-
-    feats = physicochemical_features(seq)
-    comp = composition_features(seq)
     Xp = build_feature_table([seq])
 
     taste = le_taste.inverse_transform(taste_model.predict(Xp))[0]
     sol = le_sol.inverse_transform(sol_model.predict(Xp))[0]
     dock = dock_model.predict(Xp)[0]
 
-    st.success(f"**Taste:** {taste}\n\n**Solubility:** {sol}\n\n**Docking score:** {dock:.2f}")
+    st.success(f"Taste: {taste} | Solubility: {sol} | Docking: {dock:.2f}")
 
-    st.json(feats)
-    st.json(comp)
-
-    pdb_file = build_peptide_pdb(seq)
-    pdb_text = open(pdb_file).read()
-
-    st.download_button("Download PDB", pdb_text, "peptide.pdb")
-
+    pdb_text = open(build_peptide_pdb(seq)).read()
     st.components.v1.html(show_structure(pdb_text)._make_html(), height=520)
 
 # ==========================================================
-# PDB UPLOAD + ANALYSIS
+# 🆕 BATCH PREDICTION (ADDED)
 # ==========================================================
 
 st.markdown("---")
-st.markdown("## 🧩 Upload & Analyze PDB")
+st.markdown("## 📦 Batch Prediction")
 
-uploaded = st.file_uploader("Upload PDB file", type=["pdb"])
-if uploaded:
-    pdb_text = uploaded.read().decode()
-    st.components.v1.html(show_structure(pdb_text)._make_html(), height=520)
+batch = st.file_uploader("Upload CSV with 'peptide' column", type=["csv"])
 
-    st.markdown("### Ramachandran Plot")
-    phi_psi = ramachandran_from_pdb(pdb_text)
-    if phi_psi:
-        phi, psi = zip(*phi_psi)
-        fig, ax = plt.subplots()
-        ax.scatter(phi, psi, s=20)
-        ax.set_xlim(-180,180)
-        ax.set_ylim(-180,180)
-        st.pyplot(fig)
+if batch:
+    bdf = pd.read_csv(batch)
+    bdf["peptide"] = bdf["peptide"].apply(clean_sequence)
+    Xb = build_feature_table(bdf["peptide"])
 
-    st.markdown("### Cα Distance Map")
-    dist = ca_distance_map(pdb_text)
-    fig, ax = plt.subplots(figsize=(5,5))
-    sns.heatmap(dist, cmap="viridis", ax=ax)
+    bdf["Taste"] = le_taste.inverse_transform(taste_model.predict(Xb))
+    bdf["Solubility"] = le_sol.inverse_transform(sol_model.predict(Xb))
+    bdf["Docking Score"] = dock_model.predict(Xb)
+
+    st.dataframe(bdf)
+    st.download_button("Download Batch Results",
+                       bdf.to_csv(index=False),
+                       "batch_predictions.csv")
+
+    # -------- Batch Visualizations --------
+    st.markdown("### Batch Visualizations")
+
+    fig, ax = plt.subplots()
+    bdf["Taste"].value_counts().plot(kind="bar", ax=ax)
+    ax.set_title("Taste Distribution")
+    st.pyplot(fig)
+
+    fig, ax = plt.subplots()
+    bdf["Solubility"].value_counts().plot(kind="bar", ax=ax)
+    ax.set_title("Solubility Distribution")
+    st.pyplot(fig)
+
+    fig, ax = plt.subplots()
+    sns.histplot(bdf["Docking Score"], kde=True, ax=ax)
+    ax.set_title("Docking Score Distribution")
+    st.pyplot(fig)
+
+    fig, ax = plt.subplots()
+    ax.scatter(bdf["peptide"].str.len(), bdf["Docking Score"])
+    ax.set_xlabel("Peptide Length")
+    ax.set_ylabel("Docking Score")
     st.pyplot(fig)
 
 # ==========================================================
-# ANALYTICS
+# 📊 GLOBAL ANALYTICS (EXTENDED)
 # ==========================================================
 
 st.markdown("---")
-st.markdown("## 📊 Model Analytics")
+st.markdown("## 📊 Model & Dataset Analytics")
 
-for k,v in metrics.items():
-    st.write(f"- **{k}:** {round(v,3)}")
+for k, v in metrics.items():
+    st.write(f"- **{k}:** {round(v, 3)}")
 
 coords = PCA(2).fit_transform(X_all)
 fig, ax = plt.subplots()
-ax.scatter(coords[:,0], coords[:,1])
+ax.scatter(coords[:, 0], coords[:, 1], alpha=0.6)
+ax.set_title("PCA — Feature Space")
 st.pyplot(fig)
 
-st.markdown("### AlphaFold / ColabFold")
-st.markdown("https://colab.research.google.com/github/sokrypton/ColabFold")
+# Feature importance
+fi = pd.Series(taste_model.feature_importances_, index=X_all.columns).sort_values(ascending=False)[:20]
+fig, ax = plt.subplots()
+fi.plot(kind="barh", ax=ax)
+ax.set_title("Top 20 Taste Model Features")
+st.pyplot(fig)
