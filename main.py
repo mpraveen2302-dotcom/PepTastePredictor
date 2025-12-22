@@ -143,17 +143,15 @@ st.sidebar.info("For research & educational use only")
 
 
 # ==========================================================
-# SECTION 5 — SESSION STATE INITIALIZATION
+# SECTION 5 — SESSION STATE INITIALIZATION (HARD RESET)
 # ==========================================================
 
-if "pdb_text" not in st.session_state:
+if "initialized" not in st.session_state:
+    st.session_state.initialized = True
     st.session_state.pdb_text = None
-
-
-if "last_prediction" not in st.session_state:
     st.session_state.last_prediction = {}
-if "show_analytics" not in st.session_state:
     st.session_state.show_analytics = False
+
 
 
 # ==========================================================
@@ -498,11 +496,9 @@ if mode == "Single Peptide Prediction":
         "Enter peptide sequence (FASTA single-letter code)",
         help="Example: AGLWFK"
     )
-
-    if st.button("Run Prediction"):
-
-    # ... lots of code above ...
-        st.session_state.show_analytics = True
+if st.button("Run Prediction"):
+    ...
+    st.session_state.show_analytics = True
 
 
 
@@ -668,7 +664,7 @@ if mode == "Batch Peptide Prediction":
                 batch_df.to_csv(index=False),
                 file_name="batch_predictions.csv"
             )
-        st.session_state.show_analytics = True
+                st.session_state.show_analytics = True
 
 # ==========================================================
 # SECTION 15 — PDB UPLOAD & STRUCTURAL ANALYSIS MODE
@@ -738,29 +734,29 @@ if mode == "PDB Upload & Structural Analysis":
 with st.expander("📊 Model Performance & Dataset Analytics"):
 
 # ==========================================================
-# SECTION 16 — CONDITIONAL MODEL & DATASET ANALYTICS
+# SECTION 16 — MODEL & DATASET ANALYTICS (POST-ACTION ONLY)
 # ==========================================================
 
-    if st.session_state.show_analytics:
+if st.session_state.show_analytics is True:
 
-        with st.expander("📊 Model Performance & Dataset Analytics"):
+    with st.expander("📊 Model Performance & Dataset Analytics"):
 
-           st.markdown("## 📊 Model Performance Metrics")
+        st.markdown("### Model Performance Metrics")
 
-           for k, v in metrics.items():
-               st.write(f"{k}: {round(v, 4)}")
+        for k, v in metrics.items():
+            st.write(f"{k}: {round(v, 4)}")
 
-           st.markdown("## 🧠 Dataset Feature Space (PCA Projection)")
+        st.markdown("### Dataset Feature Space (PCA Projection)")
 
-           coords = PCA(2).fit_transform(X_all)
+        coords = PCA(2).fit_transform(X_all)
 
-           fig_pca, ax_pca = plt.subplots()
-           ax_pca.scatter(coords[:, 0], coords[:, 1], alpha=0.6)
-           ax_pca.set_xlabel("PC1")
-           ax_pca.set_ylabel("PC2")
-           ax_pca.set_title("PCA of Peptide Feature Space")
+        fig_pca, ax_pca = plt.subplots()
+        ax_pca.scatter(coords[:, 0], coords[:, 1], alpha=0.6)
+        ax_pca.set_xlabel("PC1")
+        ax_pca.set_ylabel("PC2")
+        ax_pca.set_title("PCA of Peptide Feature Space")
 
-           st.pyplot(fig_pca)
+        st.pyplot(fig_pca)
 
 
 
