@@ -500,7 +500,11 @@ if mode == "Single Peptide Prediction":
     )
 
     if st.button("Run Prediction"):
-        st.session_state.show_analytics = True
+
+    # ... lots of code above ...
+
+    st.session_state.show_analytics = True
+
 
 
         # --------------------------------------------------
@@ -665,8 +669,7 @@ if mode == "Batch Peptide Prediction":
                 batch_df.to_csv(index=False),
                 file_name="batch_predictions.csv"
             )
-
-             st.session_state.show_analytics = True
+        st.session_state.show_analytics = True
 
 # ==========================================================
 # SECTION 15 — PDB UPLOAD & STRUCTURAL ANALYSIS MODE
@@ -682,11 +685,9 @@ if mode == "PDB Upload & Structural Analysis":
     )
 
     if uploaded_pdb is not None:
-        pdb_text = uploaded_pdb.read().decode()
-        st.session_state.pdb_text = pdb_text
-
-    if st.session_state.pdb_text:
-        st.session_state.show_analytics = True
+    pdb_text = uploaded_pdb.read().decode()
+    st.session_state.pdb_text = pdb_text
+    st.session_state.show_analytics = True
 
 
         # --------------------------------------------------
