@@ -148,6 +148,9 @@ st.sidebar.info("For research & educational use only")
 
 if "pdb_text" not in st.session_state:
     st.session_state.pdb_text = None
+if "show_analytics" not in st.session_state:
+    st.session_state.show_analytics = False
+
 
 if "last_prediction" not in st.session_state:
     st.session_state.last_prediction = {}
