@@ -740,27 +740,26 @@ with st.expander("📊 Model Performance & Dataset Analytics"):
 # ==========================================================
 # SECTION 16 — CONDITIONAL MODEL & DATASET ANALYTICS
 # ==========================================================
+    if st.session_state.show_analytics:
 
-if st.session_state.show_analytics:
+        with st.expander("📊 Model Performance & Dataset Analytics"):
 
-    with st.expander("📊 Model Performance & Dataset Analytics"):
+            st.markdown("## 📊 Model Performance Metrics")
 
-        st.markdown("## 📊 Model Performance Metrics")
+            for k, v in metrics.items():
+                st.write(f"{k}: {round(v, 4)}")
 
-        for k, v in metrics.items():
-            st.write(f"{k}: {round(v, 4)}")
+            st.markdown("## 🧠 Dataset Feature Space (PCA Projection)")
 
-        st.markdown("## 🧠 Dataset Feature Space (PCA Projection)")
+            coords = PCA(2).fit_transform(X_all)
 
-        coords = PCA(2).fit_transform(X_all)
+            fig_pca, ax_pca = plt.subplots()
+            ax_pca.scatter(coords[:, 0], coords[:, 1], alpha=0.6)
+            ax_pca.set_xlabel("PC1")
+            ax_pca.set_ylabel("PC2")
+            ax_pca.set_title("PCA of Peptide Feature Space")
 
-        fig_pca, ax_pca = plt.subplots()
-        ax_pca.scatter(coords[:, 0], coords[:, 1], alpha=0.6)
-        ax_pca.set_xlabel("PC1")
-        ax_pca.set_ylabel("PC2")
-        ax_pca.set_title("PCA of Peptide Feature Space")
-
-        st.pyplot(fig_pca)
+            st.pyplot(fig_pca)
 
 
     # ==========================================================
