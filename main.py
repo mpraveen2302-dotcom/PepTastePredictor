@@ -742,9 +742,13 @@ with st.expander("📊 Model Performance & Dataset Analytics"):
 # ==========================================================
     if st.session_state.show_analytics:
 
-        with st.expander("📊 Model Performance & Dataset Analytics"):
+        if st.session_state.show_analytics:
 
-            st.markdown("## 📊 Model Performance Metrics")
+             with st.expander("📊 Model Performance & Dataset Analytics"):
+
+                st.markdown("## 📊 Model Performance Metrics")
+        ...
+
 
             for k, v in metrics.items():
                 st.write(f"{k}: {round(v, 4)}")
