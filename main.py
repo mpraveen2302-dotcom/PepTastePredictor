@@ -502,8 +502,7 @@ if mode == "Single Peptide Prediction":
     if st.button("Run Prediction"):
 
     # ... lots of code above ...
-
-    st.session_state.show_analytics = True
+        st.session_state.show_analytics = True
 
 
 
