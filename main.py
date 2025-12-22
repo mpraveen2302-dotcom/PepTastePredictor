@@ -1,5 +1,5 @@
 # ==========================================================
-# PepTastePredictor — FINAL COMPLETE VERSION (PDF + ANALYSIS)
+# PepTastePredictor — MASTER FINAL VERSION (ALL FEATURES)
 # ==========================================================
 
 import streamlit as st
@@ -22,7 +22,9 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import accuracy_score, f1_score, mean_squared_error, r2_score
 from sklearn.decomposition import PCA
 
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Image as RLImage
+from reportlab.platypus import (
+    SimpleDocTemplate, Paragraph, Image as RLImage, Spacer
+)
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.pagesizes import A4
 
@@ -30,10 +32,68 @@ from reportlab.lib.pagesizes import A4
 # CONFIG
 # ==========================================================
 
-st.set_page_config(page_title="PepTastePredictor", layout="wide")
+st.set_page_config(
+    page_title="PepTastePredictor",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
 DATASET_PATH = "AIML (4).xlsx"
 AA = "ACDEFGHIKLMNPQRSTVWY"
+
+# ==========================================================
+# CSS — FRONTEND ONLY (NO BACKEND TOUCH)
+# ==========================================================
+
+st.markdown("""
+<style>
+.stApp { background-color: #f4f7fb; }
+h1,h2,h3 { color:#1f3c88; }
+
+.hero {
+  background: linear-gradient(90deg,#1f3c88,#0b7285);
+  padding:30px;
+  border-radius:16px;
+  color:white;
+  margin-bottom:25px;
+}
+
+.card {
+  background:white;
+  padding:22px;
+  border-radius:14px;
+  box-shadow:0 6px 18px rgba(0,0,0,0.08);
+  margin-bottom:20px;
+}
+
+.metric {
+  font-size:20px;
+  font-weight:600;
+  color:#0b7285;
+}
+
+.footer {
+  text-align:center;
+  color:#6c757d;
+  font-size:13px;
+  padding:30px;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ==========================================================
+# SIDEBAR
+# ==========================================================
+
+st.sidebar.image("logo.png", width=120)
+st.sidebar.markdown("### PepTastePredictor")
+st.sidebar.write("AI-driven peptide analysis platform")
+st.sidebar.write("• Taste prediction")
+st.sidebar.write("• Solubility prediction")
+st.sidebar.write("• Docking estimation")
+st.sidebar.write("• Structural bioinformatics")
+st.sidebar.write("• Batch screening")
+st.sidebar.info("For research & educational use only")
 
 # ==========================================================
 # SESSION STATE
@@ -51,11 +111,11 @@ if "last_prediction" not in st.session_state:
 def clean_sequence(seq):
     if not isinstance(seq, str):
         return ""
-    seq = seq.upper().replace(" ", "").replace("\n", "")
+    seq = seq.upper().replace(" ", "").replace("\n", "").replace("\t", "")
     return "".join(a for a in seq if a in AA)
 
 # ==========================================================
-# FEATURES
+# FEATURE EXTRACTION
 # ==========================================================
 
 def physicochemical_features(seq):
@@ -112,8 +172,8 @@ def build_peptide_pdb(seq):
         PeptideBuilder.add_residue(structure, Geometry.geometry(aa))
     io = PDBIO()
     io.set_structure(structure)
-    io.save("peptide.pdb")
-    return open("peptide.pdb").read()
+    io.save("predicted_peptide.pdb")
+    return open("predicted_peptide.pdb").read()
 
 def show_structure(pdb_text):
     view = py3Dmol.view(width=800, height=450)
@@ -199,26 +259,30 @@ X_all, taste_model, sol_model, dock_model, le_taste, le_sol, metrics = train_mod
 # PDF REPORT
 # ==========================================================
 
-def generate_pdf(metrics, prediction, fig_paths):
+def generate_pdf(metrics, prediction, image_paths):
     file = "PepTastePredictor_Full_Report.pdf"
-    doc = SimpleDocTemplate(file, pagesize=A4)
     styles = getSampleStyleSheet()
+    doc = SimpleDocTemplate(file, pagesize=A4)
     story = []
 
     story.append(Paragraph("<b>PepTastePredictor</b>", styles["Title"]))
-    story.append(Paragraph("End-to-end peptide analysis report", styles["Normal"]))
+    story.append(Spacer(1, 12))
 
     story.append(Paragraph("<b>Model Performance</b>", styles["Heading2"]))
     for k, v in metrics.items():
         story.append(Paragraph(f"{k}: {round(v,4)}", styles["Normal"]))
 
+    story.append(Spacer(1, 12))
     story.append(Paragraph("<b>Prediction Results</b>", styles["Heading2"]))
     for k, v in prediction.items():
         story.append(Paragraph(f"{k}: {v}", styles["Normal"]))
 
+    story.append(Spacer(1, 12))
     story.append(Paragraph("<b>Structural Analysis</b>", styles["Heading2"]))
-    for p in fig_paths:
-        story.append(RLImage(p, width=400, height=300))
+    for img in image_paths:
+        if os.path.exists(img):
+            story.append(RLImage(img, width=400, height=300))
+            story.append(Spacer(1, 12))
 
     doc.build(story)
     return file
@@ -227,17 +291,29 @@ def generate_pdf(metrics, prediction, fig_paths):
 # UI
 # ==========================================================
 
-st.title("🧬 PepTastePredictor")
+st.markdown("""
+<div class="hero">
+<h1>🧬 PepTastePredictor</h1>
+<p>End-to-end AI + structural bioinformatics peptide analysis platform</p>
+</div>
+""", unsafe_allow_html=True)
 
-mode = st.radio("Mode", ["Single peptide", "Batch peptides", "PDB analysis"], horizontal=True)
+mode = st.radio(
+    "Select mode",
+    ["Single Peptide", "Batch Prediction", "PDB Analysis"],
+    horizontal=True
+)
 
-# ---------------- SINGLE ----------------
+# ==========================================================
+# SINGLE PEPTIDE
+# ==========================================================
 
-if mode == "Single peptide":
+if mode == "Single Peptide":
 
     seq = st.text_input("Enter peptide sequence")
 
     if st.button("Predict"):
+
         seq = clean_sequence(seq)
         Xp = pd.DataFrame([model_features(seq)])
 
@@ -252,12 +328,25 @@ if mode == "Single peptide":
             "Docking score": round(dock, 2)
         }
 
-        st.success(st.session_state.last_prediction)
+        st.markdown(f"""
+        <div class="card">
+        <div class="metric">Taste: {taste}</div>
+        <div class="metric">Solubility: {sol}</div>
+        <div class="metric">Docking score: {dock:.2f}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        for k, v in physicochemical_features(seq).items():
+            st.write(f"{k}: {v}")
+
+        for k, v in composition_features(seq).items():
+            st.write(f"{k}: {v}")
 
         pdb = build_peptide_pdb(seq)
         st.session_state.pdb_text = pdb
 
         st.download_button("Download PDB", pdb, "predicted_peptide.pdb")
+
         st.components.v1.html(show_structure(pdb)._make_html(), height=500)
 
         rmsd = ca_rmsd(pdb)
@@ -277,12 +366,16 @@ if mode == "Single peptide":
 
         # PDF
         pdf = generate_pdf(metrics, st.session_state.last_prediction, ["rama.png", "dist.png"])
-        st.download_button("Download Full PDF Report", open(pdf, "rb"), pdf)
+        st.download_button("Download FULL PDF REPORT", open(pdf, "rb"), pdf)
 
-# ---------------- BATCH ----------------
+# ==========================================================
+# BATCH MODE
+# ==========================================================
 
-if mode == "Batch peptides":
-    batch = st.file_uploader("Upload CSV", type=["csv"])
+if mode == "Batch Prediction":
+
+    batch = st.file_uploader("Upload CSV with peptide column", type=["csv"])
+
     if batch:
         df = pd.read_csv(batch)
         df["peptide"] = df["peptide"].apply(clean_sequence)
@@ -293,12 +386,16 @@ if mode == "Batch peptides":
         df["Docking"] = dock_model.predict(Xb)
 
         st.dataframe(df)
-        st.download_button("Download results", df.to_csv(index=False), "batch_results.csv")
+        st.download_button("Download Batch Results", df.to_csv(index=False), "batch_results.csv")
 
-# ---------------- PDB ANALYSIS ----------------
+# ==========================================================
+# PDB ANALYSIS MODE
+# ==========================================================
 
-if mode == "PDB analysis":
-    up = st.file_uploader("Upload PDB", type=["pdb"])
+if mode == "PDB Analysis":
+
+    up = st.file_uploader("Upload PDB file", type=["pdb"])
+
     if up:
         pdb = up.read().decode()
         st.components.v1.html(show_structure(pdb)._make_html(), height=500)
@@ -315,8 +412,20 @@ if mode == "PDB analysis":
         sns.heatmap(ca_distance_map(pdb), ax=ax)
         st.pyplot(fig)
 
-# ---------------- METRICS ----------------
+# ==========================================================
+# MODEL METRICS
+# ==========================================================
 
-st.markdown("## 📊 Model Metrics")
+st.markdown("## 📊 Model Performance Metrics")
 for k, v in metrics.items():
     st.write(f"{k}: {round(v,4)}")
+
+# ==========================================================
+# FOOTER
+# ==========================================================
+
+st.markdown("""
+<div class="footer">
+© 2025 PepTastePredictor • AI + Structural Bioinformatics
+</div>
+""", unsafe_allow_html=True)
