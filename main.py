@@ -729,32 +729,31 @@ if mode == "PDB Upload & Structural Analysis":
 
 with st.expander("📊 Model Performance & Dataset Analytics"):
 
-# ==========================================================
-# SECTION 16 — MODEL PERFORMANCE ANALYTICS
-# ==========================================================
+    # ==========================================================
+    # SECTION 16 — MODEL PERFORMANCE ANALYTICS
+    # ==========================================================
 
+    st.markdown("## 📊 Model Performance Metrics")
 
-st.markdown("## 📊 Model Performance Metrics")
+    for k, v in metrics.items():
+        st.write(f"{k}: {round(v, 4)}")
 
-for k, v in metrics.items():
-    st.write(f"{k}: {round(v, 4)}")
+    # ==========================================================
+    # SECTION 17 — DATASET FEATURE SPACE (PCA)
+    # ==========================================================
 
+    st.markdown("## 🧠 Dataset Feature Space (PCA Projection)")
 
-# ==========================================================
-# SECTION 17 — DATASET FEATURE SPACE (PCA)
-# ==========================================================
+    coords = PCA(2).fit_transform(X_all)
 
-st.markdown("## 🧠 Dataset Feature Space (PCA Projection)")
+    fig_pca, ax_pca = plt.subplots()
+    ax_pca.scatter(coords[:, 0], coords[:, 1], alpha=0.6)
+    ax_pca.set_xlabel("PC1")
+    ax_pca.set_ylabel("PC2")
+    ax_pca.set_title("PCA of Peptide Feature Space")
 
-coords = PCA(2).fit_transform(X_all)
+    st.pyplot(fig_pca)
 
-fig_pca, ax_pca = plt.subplots()
-ax_pca.scatter(coords[:, 0], coords[:, 1], alpha=0.6)
-ax_pca.set_xlabel("PC1")
-ax_pca.set_ylabel("PC2")
-ax_pca.set_title("PCA of Peptide Feature Space")
-
-st.pyplot(fig_pca)
 
 
 # ==========================================================
