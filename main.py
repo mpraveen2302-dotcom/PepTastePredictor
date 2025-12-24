@@ -792,7 +792,9 @@ if st.session_state.show_analytics:
         ax.set_xlabel("PC1")
         ax.set_ylabel("PC2")
         ax.set_title("PCA of Peptide Feature Space")
-        save_fig(fig, "pca_overall.png")
+        fig.savefig("pca_overall.png", dpi=200, bbox_inches="tight")
+        st.session_state.pdf_figures.append("pca_overall.png")
+
         st.pyplot(fig)
 
         # -------------------------------
@@ -820,8 +822,10 @@ if st.session_state.show_analytics:
         ax.set_xlabel("Predicted")
         ax.set_ylabel("Actual")
         ax.set_title("Taste Confusion Matrix")
-        save_fig(fig, "confusion_taste.png")
+        fig.savefig("confusion_taste.png", dpi=200, bbox_inches="tight")
+        st.session_state.pdf_figures.append("confusion_taste.png")
         st.pyplot(fig)
+
 
 
         # -------------------------------
@@ -900,8 +904,10 @@ if st.session_state.show_analytics:
             ax=ax
         )
         ax.set_title("Top 20 Important Features (Taste)")
-        save_fig(fig, "feature_importance_taste.png")
+        fig.savefig("feature_importance_taste.png", dpi=200, bbox_inches="tight")
+        st.session_state.pdf_figures.append("feature_importance_taste.png")
         st.pyplot(fig)
+
 
         # -------------------------------
         # Docking Score Scatter
@@ -921,8 +927,10 @@ if st.session_state.show_analytics:
         ax.set_xlabel("True Docking Score (kcal/mol)")
         ax.set_ylabel("Predicted Docking Score (kcal/mol)")
         ax.set_title("Docking Score: True vs Predicted")
-        save_fig(fig, "docking_scatter.png")
+        fig.savefig("docking_scatter.png", dpi=200, bbox_inches="tight")
+        st.session_state.pdf_figures.append("docking_scatter.png")
         st.pyplot(fig)
+
 
 
 
