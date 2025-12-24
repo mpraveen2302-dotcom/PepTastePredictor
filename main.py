@@ -814,7 +814,7 @@ if st.session_state.show_analytics:
         # -------------------------------
         st.markdown("### 🔹 Confusion Matrix — Solubility Prediction")
 
-        y_true_sol = le_sol.transform(df["solubility"])
+        y_true_sol = le_sol.transform(df_all["solubility"])
         y_pred_sol = sol_model.predict(X_all)
 
         cm_sol = confusion_matrix(y_true_sol, y_pred_sol)
@@ -890,7 +890,7 @@ if st.session_state.show_analytics:
         # -------------------------------
         st.markdown("### 🔹 Docking Score Prediction Performance")
 
-        true_dock = df["docking score (kcal/mol)"]
+        true_dock = df_all["docking score (kcal/mol)"]
         pred_dock = dock_model.predict(X_all)
 
         fig, ax = plt.subplots()
