@@ -401,11 +401,13 @@ def train_models():
 
 
 
+
 # ==========================================================
 # SECTION 10 — LOAD MODELS
 # ==========================================================
 
 df_all, X_all, taste_model, sol_model, dock_model, le_taste, le_sol, metrics = train_models()
+
 
 
 
@@ -785,8 +787,10 @@ if st.session_state.show_analytics:
         # -------------------------------
         st.markdown("### 🔹 Confusion Matrix — Taste Prediction")
 
-        df = pd.read_excel(DATASET_PATH)
-        df.columns = df.columns.str.lower().str.strip()
+        y_true_taste = le_taste.transform(df_all["taste"])
+        y_true_sol   = le_sol.transform(df_all["solubility"])
+        true_dock    = df_all["docking score (kcal/mol)"]
+
         y_true_taste = le_taste.transform(df["taste"])
         y_pred_taste = taste_model.predict(X_all)
 
