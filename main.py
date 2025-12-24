@@ -79,16 +79,24 @@ AA = "ACDEFGHIKLMNPQRSTVWY"
 st.markdown("""
 <style>
 
-/* OS-friendly but backward compatible */
+/* ===============================
+   DEFAULT (LIGHT MODE)
+   =============================== */
 
-/* Light mode */
 .stApp {
     background-color: #f9fafc;
-    color: #222222;
+    color: #1a1a1a;
 }
 
-/* Dark mode */
+.card {
+    background-color: #ffffff;
+}
+
+/* ===============================
+   DARK MODE (OS / Browser)
+   =============================== */
 @media (prefers-color-scheme: dark) {
+
     .stApp {
         background-color: #0e1117;
         color: #fafafa;
@@ -113,15 +121,6 @@ h1, h2, h3 {
     margin-bottom: 30px;
 }
 
-/* Card */
-.card {
-    background-color: white;
-    padding: 22px;
-    border-radius: 14px;
-    box-shadow: 0 6px 18px rgba(0,0,0,0.15);
-    margin-bottom: 20px;
-}
-
 /* Metrics */
 .metric {
     font-size: 20px;
@@ -139,7 +138,6 @@ h1, h2, h3 {
 
 </style>
 """, unsafe_allow_html=True)
-
 
 # ==========================================================
 # SECTION 4 — SIDEBAR INFORMATION PANEL
