@@ -72,15 +72,16 @@ st.set_page_config(
 DATASET_PATH = "AIML (4).xlsx"
 AA = "ACDEFGHIKLMNPQRSTVWY"
 
-st.markdown("""
-<style>
+# ==========================================================
+# SECTION 3 — FRONTEND STYLING (CSS ONLY)
+# ==========================================================
 
 st.markdown("""
 <style>
 
 /* OS-friendly but backward compatible */
 
-/* Light mode (default) */
+/* Light mode */
 .stApp {
     background-color: #f9fafc;
     color: #222222;
