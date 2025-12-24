@@ -430,7 +430,7 @@ def generate_pdf(metrics, prediction, image_paths):
     Generates a full PDF report containing:
     - Model performance metrics
     - Prediction results
-    - Embedded structural plots
+    - Embedded structural & analytics plots
     """
 
     file_name = "PepTastePredictor_Full_Report.pdf"
@@ -444,17 +444,19 @@ def generate_pdf(metrics, prediction, image_paths):
     story.append(Spacer(1, 12))
 
     # Overview
-    story.append(Paragraph(
-        "An AI-driven platform for peptide taste, solubility, docking, "
-        "and structural bioinformatics analysis.",
-        styles["Normal"]
-    ))
+    story.append(
+        Paragraph(
+            "An AI-driven platform for peptide taste, solubility, docking, "
+            "and structural bioinformatics analysis.",
+            styles["Normal"]
+        )
+    )
     story.append(Spacer(1, 12))
 
     # Model metrics
     story.append(Paragraph("<b>Model Performance Metrics</b>", styles["Heading2"]))
     for k, v in metrics.items():
-        story.append(Paragraph(f"{k}: {round(v,4)}", styles["Normal"]))
+        story.append(Paragraph(f"{k}: {round(v, 4)}", styles["Normal"]))
     story.append(Spacer(1, 12))
 
     # Prediction results
@@ -463,26 +465,21 @@ def generate_pdf(metrics, prediction, image_paths):
         story.append(Paragraph(f"{k}: {v}", styles["Normal"]))
     story.append(Spacer(1, 12))
 
-    # Structural analysis
-    story.append(Paragraph("<b>Structural Analysis</b>", styles["Heading2"]))
-    story.append(Paragraph(
-        "Structural analysis includes 3D visualization, Ramachandran plot, "
-        "Cα distance mapping, and RMSD-based deviation assessment.",
-        styles["Normal"]
-    ))
+    # Figures section
+    story.append(Paragraph("<b>Visual Analytics</b>", styles["Heading2"]))
     story.append(Spacer(1, 12))
 
-    # Add figures
-   for img in image_paths:
-       if os.path.exists(img):
-           story.append(RLImage(img, width=450, height=300))
-           story.append(Spacer(1, 18))
-
+    # Add all figures
+    for img in image_paths:
+        if os.path.exists(img):
+            story.append(RLImage(img, width=450, height=300))
+            story.append(Spacer(1, 18))
 
     # Build PDF
     doc.build(story)
 
     return file_name
+
 
 st.markdown("""
 <div class="hero">
