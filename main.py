@@ -790,8 +790,6 @@ if st.session_state.show_analytics:
         y_true_taste = le_taste.transform(df_all["taste"])
         y_true_sol   = le_sol.transform(df_all["solubility"])
         true_dock    = df_all["docking score (kcal/mol)"]
-
-        y_true_taste = le_taste.transform(df["taste"])
         y_pred_taste = taste_model.predict(X_all)
 
         cm_taste = confusion_matrix(y_true_taste, y_pred_taste)
