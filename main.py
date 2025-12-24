@@ -57,6 +57,8 @@ from reportlab.platypus import (
 )
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.pagesizes import A4
+from sklearn.metrics import confusion_matrix
+
 
 
 # ==========================================================
@@ -757,25 +759,147 @@ if st.session_state.show_analytics:
         # -------------------------------
         # Model performance metrics
         # -------------------------------
-        st.markdown("### Model Performance Metrics")
-
+        st.markdown("### 📈 Model Performance Metrics")
         for k, v in metrics.items():
             st.write(f"{k}: {round(v, 4)}")
 
         # -------------------------------
-        # PCA feature space visualization
+        # PCA (overall feature space)
         # -------------------------------
-        st.markdown("### Dataset Feature Space (PCA Projection)")
+        st.markdown("### 🔹 Dataset Feature Space (PCA Projection)")
 
-        coords = PCA(2).fit_transform(X_all)
+        pca_all = PCA(n_components=2)
+        coords_all = pca_all.fit_transform(X_all)
 
-        fig_pca, ax_pca = plt.subplots()
-        ax_pca.scatter(coords[:, 0], coords[:, 1], alpha=0.6)
-        ax_pca.set_xlabel("PC1")
-        ax_pca.set_ylabel("PC2")
-        ax_pca.set_title("PCA of Peptide Feature Space")
+        fig, ax = plt.subplots()
+        ax.scatter(coords_all[:, 0], coords_all[:, 1], alpha=0.6)
+        ax.set_xlabel("PC1")
+        ax.set_ylabel("PC2")
+        ax.set_title("PCA of Peptide Feature Space")
+        st.pyplot(fig)
 
-        st.pyplot(fig_pca)
+        # -------------------------------
+        # Confusion Matrix — Taste
+        # -------------------------------
+        st.markdown("### 🔹 Confusion Matrix — Taste Prediction")
+
+        df = pd.read_excel(DATASET_PATH)
+        y_true_taste = le_taste.transform(df["taste"])
+        y_pred_taste = taste_model.predict(X_all)
+
+        cm_taste = confusion_matrix(y_true_taste, y_pred_taste)
+
+        fig, ax = plt.subplots()
+        sns.heatmap(
+            cm_taste,
+            annot=True,
+            fmt="d",
+            cmap="Blues",
+            xticklabels=le_taste.classes_,
+            yticklabels=le_taste.classes_,
+            ax=ax
+        )
+        ax.set_xlabel("Predicted")
+        ax.set_ylabel("Actual")
+        ax.set_title("Taste Confusion Matrix")
+        st.pyplot(fig)
+
+        # -------------------------------
+        # Confusion Matrix — Solubility
+        # -------------------------------
+        st.markdown("### 🔹 Confusion Matrix — Solubility Prediction")
+
+        y_true_sol = le_sol.transform(df["solubility"])
+        y_pred_sol = sol_model.predict(X_all)
+
+        cm_sol = confusion_matrix(y_true_sol, y_pred_sol)
+
+        fig, ax = plt.subplots()
+        sns.heatmap(
+            cm_sol,
+            annot=True,
+            fmt="d",
+            cmap="Greens",
+            xticklabels=le_sol.classes_,
+            yticklabels=le_sol.classes_,
+            ax=ax
+        )
+        ax.set_xlabel("Predicted")
+        ax.set_ylabel("Actual")
+        ax.set_title("Solubility Confusion Matrix")
+        st.pyplot(fig)
+
+        # -------------------------------
+        # PCA — Colored by Taste
+        # -------------------------------
+        st.markdown("### 🔹 PCA Projection (Colored by Taste)")
+
+        pca = PCA(n_components=2)
+        coords = pca.fit_transform(X_all)
+        taste_labels = y_true_taste
+
+        fig, ax = plt.subplots()
+        scatter = ax.scatter(
+            coords[:, 0],
+            coords[:, 1],
+            c=taste_labels,
+            cmap="tab10",
+            alpha=0.7
+        )
+
+        handles = [
+            plt.Line2D([0], [0], marker='o', color='w',
+                       label=le_taste.classes_[i],
+                       markerfacecolor=plt.cm.tab10(i),
+                       markersize=8)
+            for i in range(len(le_taste.classes_))
+        ]
+        ax.legend(handles=handles, title="Taste")
+        ax.set_xlabel("PC1")
+        ax.set_ylabel("PC2")
+        ax.set_title("PCA of Feature Space (Taste)")
+        st.pyplot(fig)
+
+        # -------------------------------
+        # Feature Importance — Taste
+        # -------------------------------
+        st.markdown("### 🔹 Feature Importance — Taste Model")
+
+        imp_df = pd.DataFrame({
+            "Feature": X_all.columns,
+            "Importance": taste_model.feature_importances_
+        }).sort_values("Importance", ascending=False).head(20)
+
+        fig, ax = plt.subplots(figsize=(6, 6))
+        sns.barplot(
+            data=imp_df,
+            x="Importance",
+            y="Feature",
+            ax=ax
+        )
+        ax.set_title("Top 20 Important Features (Taste)")
+        st.pyplot(fig)
+
+        # -------------------------------
+        # Docking Score Scatter
+        # -------------------------------
+        st.markdown("### 🔹 Docking Score Prediction Performance")
+
+        true_dock = df["docking score (kcal/mol)"]
+        pred_dock = dock_model.predict(X_all)
+
+        fig, ax = plt.subplots()
+        ax.scatter(true_dock, pred_dock, alpha=0.6)
+        ax.plot(
+            [true_dock.min(), true_dock.max()],
+            [true_dock.min(), true_dock.max()],
+            linestyle="--"
+        )
+        ax.set_xlabel("True Docking Score (kcal/mol)")
+        ax.set_ylabel("Predicted Docking Score (kcal/mol)")
+        ax.set_title("Docking Score: True vs Predicted")
+        st.pyplot(fig)
+
 
 
 
