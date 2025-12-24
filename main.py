@@ -186,8 +186,9 @@ def clean_sequence(seq):
     seq = seq.upper().replace(" ", "").replace("\n", "").replace("\t", "")
     return "".join(a for a in seq if a in AA)
     def save_fig(fig, filename):
-    fig.savefig(filename, dpi=200, bbox_inches="tight")
-    st.session_state.pdf_figures.append(filename)
+        fig.savefig(filename, dpi=200, bbox_inches="tight")
+        st.session_state.pdf_figures.append(filename)
+
 
 
 
