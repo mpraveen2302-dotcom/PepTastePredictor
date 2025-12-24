@@ -581,25 +581,7 @@ if mode == "Single Peptide Prediction":
             save_fig(fig_dist, "ca_distance_map.png")
             st.pyplot(fig_dist)
 
-            # -------------------------------
-            # PDF download
-            # -------------------------------
-            st.markdown("## 📄 Full PDF Report")
-
-            pdf_path = generate_pdf(
-                metrics,
-                st.session_state.last_prediction,
-                st.session_state.pdf_figures
-            )
-
-            with open(pdf_path, "rb") as f:
-                st.download_button(
-                    "📥 Download Complete PDF Report",
-                    f,
-                    file_name="PepTastePredictor_Full_Report.pdf",
-                    mime="application/pdf"
-                )
-
+           
 
 # ==========================================================
 # SECTION 14 — BATCH PEPTIDE PREDICTION MODE
@@ -801,7 +783,7 @@ if st.session_state.show_analytics:
         coords_taste = pca_taste.fit_transform(X_all)
 
         fig_pca_taste, ax = plt.subplots()
-        scatter = ax.scatter(
+        ax.scatter(
             coords_taste[:, 0],
             coords_taste[:, 1],
             c=y_true_taste,
@@ -828,7 +810,7 @@ if st.session_state.show_analytics:
         st.pyplot(fig_pca_taste)
 
         # --------------------------------------------------
-        # Feature Importance — Taste Model
+        # Feature Importance — Taste
         # --------------------------------------------------
         st.markdown("### 🔹 Feature Importance — Taste Model")
 
@@ -872,6 +854,29 @@ if st.session_state.show_analytics:
         ax.set_title("Docking Score Prediction Performance")
         save_fig(fig_dock, "docking_scatter.png")
         st.pyplot(fig_dock)
+# ==========================================================
+# SECTION 16B — FINAL PDF DOWNLOAD (ALL PLOTS INCLUDED)
+# ==========================================================
+
+if st.session_state.show_analytics and len(st.session_state.pdf_figures) > 0:
+
+    st.markdown("## 📄 Download Complete PDF Report")
+
+    pdf_path = generate_pdf(
+        metrics,
+        st.session_state.last_prediction,
+        st.session_state.pdf_figures
+    )
+
+    with open(pdf_path, "rb") as f:
+        st.download_button(
+            "📥 Download Full Analytics PDF",
+            f,
+            file_name="PepTastePredictor_Full_Report.pdf",
+            mime="application/pdf"
+        )
+
+
 
 
 # ==========================================================
