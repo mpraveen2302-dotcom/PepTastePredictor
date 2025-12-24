@@ -165,6 +165,8 @@ if "initialized" not in st.session_state:
     st.session_state.pdb_text = None
     st.session_state.last_prediction = {}
     st.session_state.show_analytics = False
+    st.session_state.pdf_figures = []
+
 
 
 
@@ -183,6 +185,10 @@ def clean_sequence(seq):
         return ""
     seq = seq.upper().replace(" ", "").replace("\n", "").replace("\t", "")
     return "".join(a for a in seq if a in AA)
+    def save_fig(fig, filename):
+    fig.savefig(filename, dpi=200, bbox_inches="tight")
+    st.session_state.pdf_figures.append(filename)
+
 
 
 # ==========================================================
@@ -466,10 +472,11 @@ def generate_pdf(metrics, prediction, image_paths):
     story.append(Spacer(1, 12))
 
     # Add figures
-    for img in image_paths:
-        if os.path.exists(img):
-            story.append(RLImage(img, width=400, height=300))
-            story.append(Spacer(1, 12))
+   for img in image_paths:
+    if os.path.exists(img):
+        story.append(RLImage(img, width=450, height=300))
+        story.append(Spacer(1, 18))
+
 
     # Build PDF
     doc.build(story)
@@ -516,6 +523,8 @@ if mode == "Single Peptide Prediction":
     )
 
     if st.button("Run Prediction"):
+        st.session_state.pdf_figures = []
+
 
         # --------------------------------------------------
         # Sequence cleaning & feature generation
@@ -628,10 +637,11 @@ if mode == "Single Peptide Prediction":
         st.markdown("## 📄 Full PDF Report")
 
         pdf_path = generate_pdf(
-            metrics,
-            st.session_state.last_prediction,
-            ["rama.png", "dist.png"]
+          metrics,
+          st.session_state.last_prediction,
+          st.session_state.pdf_figures
         )
+
 
         with open(pdf_path, "rb") as f:
             st.download_button(
@@ -736,6 +746,7 @@ if mode == "PDB Upload & Structural Analysis":
             ax.set_xlabel("Phi (°)")
             ax.set_ylabel("Psi (°)")
             ax.set_title("Ramachandran Plot")
+            save_fig(fig_rama, "ramachandran.png")
             st.pyplot(fig)
 
         # --------------------------------------------------
@@ -750,6 +761,7 @@ if mode == "PDB Upload & Structural Analysis":
             ax=ax
         )
         ax.set_title("Cα Distance Heatmap")
+        save_fig(fig_dist, "ca_distance.png")
         st.pyplot(fig)
 
 # ==========================================================
@@ -780,6 +792,7 @@ if st.session_state.show_analytics:
         ax.set_xlabel("PC1")
         ax.set_ylabel("PC2")
         ax.set_title("PCA of Peptide Feature Space")
+        save_fig(fig, "pca_overall.png")
         st.pyplot(fig)
 
         # -------------------------------
@@ -807,7 +820,9 @@ if st.session_state.show_analytics:
         ax.set_xlabel("Predicted")
         ax.set_ylabel("Actual")
         ax.set_title("Taste Confusion Matrix")
+        save_fig(fig, "confusion_taste.png")
         st.pyplot(fig)
+
 
         # -------------------------------
         # Confusion Matrix — Solubility
@@ -832,6 +847,7 @@ if st.session_state.show_analytics:
         ax.set_xlabel("Predicted")
         ax.set_ylabel("Actual")
         ax.set_title("Solubility Confusion Matrix")
+        save_fig(fig, "confusion_solubility.png")
         st.pyplot(fig)
 
         # -------------------------------
@@ -863,6 +879,7 @@ if st.session_state.show_analytics:
         ax.set_xlabel("PC1")
         ax.set_ylabel("PC2")
         ax.set_title("PCA of Feature Space (Taste)")
+        save_fig(fig, "pca_taste.png")
         st.pyplot(fig)
 
         # -------------------------------
@@ -883,6 +900,7 @@ if st.session_state.show_analytics:
             ax=ax
         )
         ax.set_title("Top 20 Important Features (Taste)")
+        save_fig(fig, "feature_importance_taste.png")
         st.pyplot(fig)
 
         # -------------------------------
@@ -903,6 +921,7 @@ if st.session_state.show_analytics:
         ax.set_xlabel("True Docking Score (kcal/mol)")
         ax.set_ylabel("Predicted Docking Score (kcal/mol)")
         ax.set_title("Docking Score: True vs Predicted")
+        save_fig(fig, "docking_scatter.png")
         st.pyplot(fig)
 
 
