@@ -474,9 +474,9 @@ def generate_pdf(metrics, prediction, image_paths):
 
     # Add figures
    for img in image_paths:
-    if os.path.exists(img):
-        story.append(RLImage(img, width=450, height=300))
-        story.append(Spacer(1, 18))
+       if os.path.exists(img):
+           story.append(RLImage(img, width=450, height=300))
+           story.append(Spacer(1, 18))
 
 
     # Build PDF
