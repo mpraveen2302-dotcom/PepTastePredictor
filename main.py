@@ -697,42 +697,44 @@ if mode == "PDB Upload & Structural Analysis":
 
 if st.session_state.show_analytics:
 
+    st.markdown("---")
+
     with st.expander("📊 Model Performance & Dataset Analytics", expanded=False):
 
-        # --------------------------------------------------
+        # -------------------------------
         # Model performance metrics
-        # --------------------------------------------------
+        # -------------------------------
         st.markdown("### 📈 Model Performance Metrics")
         for k, v in metrics.items():
             st.write(f"**{k}**: {round(v, 4)}")
 
-        # --------------------------------------------------
-        # PCA — Overall Feature Space
-        # --------------------------------------------------
-        st.markdown("### 🔹 PCA: Overall Peptide Feature Space")
+        # -------------------------------
+        # PCA — Overall
+        # -------------------------------
+        st.markdown("### 🔹 PCA: Overall Feature Space")
 
         pca_all = PCA(n_components=2)
         coords_all = pca_all.fit_transform(X_all)
 
-        fig_pca_all, ax = plt.subplots()
+        fig, ax = plt.subplots()
         ax.scatter(coords_all[:, 0], coords_all[:, 1], alpha=0.6)
         ax.set_xlabel("PC1")
         ax.set_ylabel("PC2")
         ax.set_title("PCA of Peptide Feature Space")
-        save_fig(fig_pca_all, "pca_overall.png")
-        st.pyplot(fig_pca_all)
+        save_fig(fig, "pca_overall.png")
+        st.pyplot(fig)
 
-        # --------------------------------------------------
+        # -------------------------------
         # Confusion Matrix — Taste
-        # --------------------------------------------------
-        st.markdown("### 🔹 Confusion Matrix — Taste Prediction")
+        # -------------------------------
+        st.markdown("### 🔹 Confusion Matrix — Taste")
 
         y_true_taste = le_taste.transform(df_all["taste"])
         y_pred_taste = taste_model.predict(X_all)
 
         cm_taste = confusion_matrix(y_true_taste, y_pred_taste)
 
-        fig_cm_taste, ax = plt.subplots()
+        fig, ax = plt.subplots()
         sns.heatmap(
             cm_taste,
             annot=True,
@@ -742,23 +744,21 @@ if st.session_state.show_analytics:
             yticklabels=le_taste.classes_,
             ax=ax
         )
-        ax.set_xlabel("Predicted")
-        ax.set_ylabel("Actual")
         ax.set_title("Taste Confusion Matrix")
-        save_fig(fig_cm_taste, "confusion_taste.png")
-        st.pyplot(fig_cm_taste)
+        save_fig(fig, "confusion_taste.png")
+        st.pyplot(fig)
 
-        # --------------------------------------------------
+        # -------------------------------
         # Confusion Matrix — Solubility
-        # --------------------------------------------------
-        st.markdown("### 🔹 Confusion Matrix — Solubility Prediction")
+        # -------------------------------
+        st.markdown("### 🔹 Confusion Matrix — Solubility")
 
         y_true_sol = le_sol.transform(df_all["solubility"])
         y_pred_sol = sol_model.predict(X_all)
 
         cm_sol = confusion_matrix(y_true_sol, y_pred_sol)
 
-        fig_cm_sol, ax = plt.subplots()
+        fig, ax = plt.subplots()
         sns.heatmap(
             cm_sol,
             annot=True,
@@ -768,50 +768,13 @@ if st.session_state.show_analytics:
             yticklabels=le_sol.classes_,
             ax=ax
         )
-        ax.set_xlabel("Predicted")
-        ax.set_ylabel("Actual")
         ax.set_title("Solubility Confusion Matrix")
-        save_fig(fig_cm_sol, "confusion_solubility.png")
-        st.pyplot(fig_cm_sol)
+        save_fig(fig, "confusion_solubility.png")
+        st.pyplot(fig)
 
-        # --------------------------------------------------
-        # PCA — Colored by Taste
-        # --------------------------------------------------
-        st.markdown("### 🔹 PCA Projection (Colored by Taste)")
-
-        pca_taste = PCA(n_components=2)
-        coords_taste = pca_taste.fit_transform(X_all)
-
-        fig_pca_taste, ax = plt.subplots()
-        ax.scatter(
-            coords_taste[:, 0],
-            coords_taste[:, 1],
-            c=y_true_taste,
-            cmap="tab10",
-            alpha=0.7
-        )
-
-        handles = [
-            plt.Line2D(
-                [0], [0],
-                marker="o",
-                color="w",
-                label=le_taste.classes_[i],
-                markerfacecolor=plt.cm.tab10(i),
-                markersize=8
-            )
-            for i in range(len(le_taste.classes_))
-        ]
-        ax.legend(handles=handles, title="Taste")
-        ax.set_xlabel("PC1")
-        ax.set_ylabel("PC2")
-        ax.set_title("PCA of Feature Space (Taste)")
-        save_fig(fig_pca_taste, "pca_taste.png")
-        st.pyplot(fig_pca_taste)
-
-        # --------------------------------------------------
+        # -------------------------------
         # Feature Importance — Taste
-        # --------------------------------------------------
+        # -------------------------------
         st.markdown("### 🔹 Feature Importance — Taste Model")
 
         imp_df = (
@@ -823,39 +786,32 @@ if st.session_state.show_analytics:
             .head(20)
         )
 
-        fig_imp, ax = plt.subplots(figsize=(6, 6))
-        sns.barplot(
-            data=imp_df,
-            x="Importance",
-            y="Feature",
-            ax=ax
-        )
+        fig, ax = plt.subplots(figsize=(6, 6))
+        sns.barplot(data=imp_df, x="Importance", y="Feature", ax=ax)
         ax.set_title("Top 20 Important Features (Taste)")
-        save_fig(fig_imp, "feature_importance_taste.png")
-        st.pyplot(fig_imp)
+        save_fig(fig, "feature_importance_taste.png")
+        st.pyplot(fig)
 
-        # --------------------------------------------------
-        # Docking Score Scatter Plot
-        # --------------------------------------------------
+        # -------------------------------
+        # Docking Scatter
+        # -------------------------------
         st.markdown("### 🔹 Docking Score: True vs Predicted")
 
         true_dock = df_all["docking score (kcal/mol)"]
         pred_dock = dock_model.predict(X_all)
 
-        fig_dock, ax = plt.subplots()
+        fig, ax = plt.subplots()
         ax.scatter(true_dock, pred_dock, alpha=0.6)
         ax.plot(
             [true_dock.min(), true_dock.max()],
             [true_dock.min(), true_dock.max()],
             linestyle="--"
         )
-        ax.set_xlabel("True Docking Score (kcal/mol)")
-        ax.set_ylabel("Predicted Docking Score (kcal/mol)")
-        ax.set_title("Docking Score Prediction Performance")
-        save_fig(fig_dock, "docking_scatter.png")
-        st.pyplot(fig_dock)
+        ax.set_title("Docking Prediction Performance")
+        save_fig(fig, "docking_scatter.png")
+        st.pyplot(fig)
 # ==========================================================
-# SECTION 16B — FINAL PDF DOWNLOAD (ALL PLOTS INCLUDED)
+# SECTION 16B — FINAL PDF DOWNLOAD (ALL PLOTS)
 # ==========================================================
 
 if st.session_state.show_analytics and len(st.session_state.pdf_figures) > 0:
@@ -875,6 +831,7 @@ if st.session_state.show_analytics and len(st.session_state.pdf_figures) > 0:
             file_name="PepTastePredictor_Full_Report.pdf",
             mime="application/pdf"
         )
+
 
 
 
