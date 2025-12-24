@@ -175,6 +175,10 @@ if "initialized" not in st.session_state:
 # ==========================================================
 
 def clean_sequence(seq):
+    def save_fig(fig, filename):
+        fig.savefig(filename, dpi=200, bbox_inches="tight")
+        st.session_state.pdf_figures.append(filename)
+
     """
     Cleans peptide sequences by:
     • Uppercasing
@@ -185,9 +189,7 @@ def clean_sequence(seq):
         return ""
     seq = seq.upper().replace(" ", "").replace("\n", "").replace("\t", "")
     return "".join(a for a in seq if a in AA)
-    def save_fig(fig, filename):
-        fig.savefig(filename, dpi=200, bbox_inches="tight")
-        st.session_state.pdf_figures.append(filename)
+   
 
 
 
