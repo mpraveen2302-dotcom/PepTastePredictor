@@ -75,55 +75,63 @@ AA = "ACDEFGHIKLMNPQRSTVWY"
 st.markdown("""
 <style>
 
-/* ============================= */
-/* THEME-AWARE GLOBAL COLORS */
-/* ============================= */
+st.markdown("""
+<style>
 
-/* App background */
+/* OS-friendly but backward compatible */
+
+/* Light mode (default) */
 .stApp {
-    background-color: var(--background-color);
-    color: var(--text-color);
+    background-color: #f9fafc;
+    color: #222222;
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+    .stApp {
+        background-color: #0e1117;
+        color: #fafafa;
+    }
+
+    .card {
+        background-color: #1c1f26;
+    }
 }
 
 /* Titles */
 h1, h2, h3 {
-    color: var(--primary-color);
+    color: #1f3c88;
 }
 
 /* Hero banner */
 .hero {
-    background: linear-gradient(
-        90deg,
-        rgba(31, 60, 136, 0.85),
-        rgba(11, 114, 133, 0.85)
-    );
+    background: linear-gradient(90deg, #1f3c88, #0b7285);
     padding: 30px;
     border-radius: 16px;
     color: white;
     margin-bottom: 30px;
 }
 
-/* Card layout */
+/* Card */
 .card {
-    background-color: var(--secondary-background-color);
+    background-color: white;
     padding: 22px;
     border-radius: 14px;
     box-shadow: 0 6px 18px rgba(0,0,0,0.15);
     margin-bottom: 20px;
 }
 
-/* Metrics highlight */
+/* Metrics */
 .metric {
     font-size: 20px;
     font-weight: 600;
-    color: var(--primary-color);
+    color: #0b7285;
 }
 
 /* Footer */
 .footer {
     text-align: center;
-    color: var(--text-color);
-    opacity: 0.65;
+    color: #888;
     font-size: 13px;
     padding: 30px;
 }
