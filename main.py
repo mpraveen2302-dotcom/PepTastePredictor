@@ -72,27 +72,31 @@ st.set_page_config(
 DATASET_PATH = "AIML (4).xlsx"
 AA = "ACDEFGHIKLMNPQRSTVWY"
 
-
-# ==========================================================
-# SECTION 3 — FRONTEND STYLING (CSS ONLY)
-# ==========================================================
-
 st.markdown("""
 <style>
 
-/* Global background */
+/* ============================= */
+/* THEME-AWARE GLOBAL COLORS */
+/* ============================= */
+
+/* App background */
 .stApp {
-    background-color: #f4f7fb;
+    background-color: var(--background-color);
+    color: var(--text-color);
 }
 
 /* Titles */
 h1, h2, h3 {
-    color: #1f3c88;
+    color: var(--primary-color);
 }
 
 /* Hero banner */
 .hero {
-    background: linear-gradient(90deg, #1f3c88, #0b7285);
+    background: linear-gradient(
+        90deg,
+        rgba(31, 60, 136, 0.85),
+        rgba(11, 114, 133, 0.85)
+    );
     padding: 30px;
     border-radius: 16px;
     color: white;
@@ -101,10 +105,10 @@ h1, h2, h3 {
 
 /* Card layout */
 .card {
-    background: white;
+    background-color: var(--secondary-background-color);
     padding: 22px;
     border-radius: 14px;
-    box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.15);
     margin-bottom: 20px;
 }
 
@@ -112,13 +116,14 @@ h1, h2, h3 {
 .metric {
     font-size: 20px;
     font-weight: 600;
-    color: #0b7285;
+    color: var(--primary-color);
 }
 
 /* Footer */
 .footer {
     text-align: center;
-    color: #6c757d;
+    color: var(--text-color);
+    opacity: 0.65;
     font-size: 13px;
     padding: 30px;
 }
