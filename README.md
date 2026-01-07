@@ -78,3 +78,12 @@ The application supports three analysis modes:
 
 ## 📁 Project Structure
 
+PepTastePredictor/
+│
+├── main.py              # Streamlit application (core file)
+├── requirements.txt     # Python dependencies
+├── AIML (4).xlsx        # Dataset used for model training
+├── logo.png             # Application logo
+├── README.md            # Project documentation
+└── LICENSE              # License file (optional)
+
