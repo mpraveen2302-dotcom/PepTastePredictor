@@ -1,137 +1,80 @@
 # 🧬 PepTastePredictor
 
-**PepTastePredictor** is an advanced **Streamlit-based peptide analysis and prediction platform** that integrates **bioinformatics, machine learning, and structural biology** into a single unified application.
+**PepTastePredictor** is a complete end-to-end, Streamlit-based bioinformatics platform for **peptide taste prediction and structural analysis**.  
+It integrates **machine learning**, **physicochemical analysis**, **3D structure generation**, **structural bioinformatics**, **batch screening**, and **automated PDF reporting** into a single interactive web application.
 
-The app predicts:
-- **Taste profile**
-- **Solubility**
-- **Docking score (kcal/mol)**
-
-and provides:
-- **Extensive feature extraction (400+ features)**
-- **Model performance analytics**
-- **Multiple visualizations**
-- **3D peptide structure (PDB) generation**
-- **Direct AlphaFold / ColabFold integration**
-
-This platform is suitable for **research, education, and AI-driven peptide design**.
+This project is designed for **academic, educational, and research purposes**.
 
 ---
 
-## 🚀 Key Features
+## 🚀 Features
 
-### 🔬 1. Extensive Feature Engineering (400+ Features)
+### 🔬 Machine Learning Predictions
+- Peptide **taste prediction**
+- Peptide **solubility prediction**
+- **Docking score estimation** (kcal/mol)
+- Random Forest–based classification and regression models
 
-PepTastePredictor extracts a **large and diverse feature set** from peptide sequences:
+### 🧪 Physicochemical & Sequence Analysis
+- Molecular weight
+- Isoelectric point (pI)
+- Net charge (pH 7)
+- GRAVY score
+- Instability index
+- Secondary structure fractions
+- Amino acid composition (hydrophobic, polar, charged, aromatic)
 
-#### Physicochemical Properties
-- Peptide length  
-- Molecular weight  
-- Isoelectric point (pI)  
-- Net charge at pH 7  
-- GRAVY (hydrophobicity index)  
-- Aromaticity  
-- Instability index  
+### 🧬 Structural Bioinformatics
+- **3D peptide structure generation** using PeptideBuilder
+- Interactive **3D visualization** using py3Dmol
+- **Cα RMSD calculation**
+- **Ramachandran plot analysis**
+- **Cα distance heatmap**
 
-#### Structural Propensity (BioPython-based)
-- Alpha-helix fraction  
-- Beta-turn fraction  
-- Beta-sheet fraction  
+### 📦 Batch Prediction
+- Upload CSV file containing peptide sequences
+- Predict taste, solubility, and docking scores for multiple peptides
+- Download batch prediction results
 
-#### Sequence-Based Features
-- Amino acid composition (20 features)
-- Dipeptide composition (400 features)
+### 📊 Model & Dataset Analytics
+- Model performance metrics (Accuracy, F1, RMSE, R²)
+- PCA visualization of feature space
+- Confusion matrices (Taste & Solubility)
+- Feature importance analysis
+- Docking score performance plots
 
-➡️ **Total features per peptide: 400+**
-
----
-
-## 🤖 2. Machine Learning Models
-
-The app uses **Random Forest models**:
-
-| Task | Model |
-|-----|------|
-| Taste prediction | RandomForestClassifier |
-| Solubility prediction | RandomForestClassifier |
-| Docking score prediction | RandomForestRegressor |
-
-### Training Strategy
-- Automatic **train–test split**
-- Stratified splitting when possible
-- Robust handling of small or imbalanced datasets
-
----
-
-## 📊 3. Model Performance Metrics
-
-PepTastePredictor reports **clear quantitative evaluation**:
-
-### Classification
-- Accuracy
-- F1-score (weighted)
-
-### Regression
-- RMSE (Root Mean Squared Error)
-- R² score
-
-These metrics are printed in the console and used internally for validation.
+### 📄 Automated PDF Report
+- One-click generation of a **comprehensive PDF report**
+- Includes:
+  - Model performance
+  - Prediction results
+  - All generated plots and analytics
 
 ---
 
-## 📈 4. Visualization & Analysis
+## 🖥️ Application Modes
 
-The app provides **independent, correctly rendered visualizations**:
+The application supports three analysis modes:
 
-### Confusion Matrices
-- Taste classification confusion matrix
-- Solubility classification confusion matrix
-
-### Feature Space Analysis
-- PCA (2D) plot for taste-based clustering
-
-### Regression Quality
-- Actual vs Predicted Docking Score plot
-
-Each plot is generated using **fresh figures** (no reused global plots).
+1. **Single Peptide Prediction**
+2. **Batch Peptide Prediction**
+3. **PDB Upload & Structural Analysis**
 
 ---
 
-## 🧬 5. Peptide Structure & AlphaFold Integration
+## 🛠️ Tech Stack
 
-### PDB Generation
-- Automatically generates a **CA-trace PDB file**
-- File is downloadable directly from the app
-
-### AlphaFold / ColabFold
-- Direct link provided to run **structure prediction**
-- Compatible with generated peptide sequences and uploaded PDBs
-
-🔗 AlphaFold Notebook  
-https://colab.research.google.com/github/sokrypton/ColabFold/blob/main/AlphaFold2_mmseqs2_advanced.ipynb
-
----
-
-## 🧪 6. Streamlit User Interface
-
-### Single Unified App
-- One-page Streamlit app
-- No multiple sub-apps or split interfaces
-
-### Inputs
-- Peptide sequence (text input)
-
-### Outputs
-- Predicted taste
-- Predicted solubility
-- Predicted docking score
-- Total feature count
-- Downloadable PDB file
-- Analytical plots
+- **Python**
+- **Streamlit**
+- **Scikit-learn**
+- **Pandas & NumPy**
+- **Biopython**
+- **PeptideBuilder**
+- **py3Dmol**
+- **Matplotlib & Seaborn**
+- **ReportLab**
 
 ---
 
-## 📁 Dataset Requirements
-
-Your dataset must contain the following columns (case-insensitive):
+## 📁 Project Structure
 
